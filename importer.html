@@ -109,7 +109,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- ELEMENTY UI ---
     const dropZone = document.getElementById('dropZone');
     const browseBtn = document.getElementById('browseBtn');
     const fileInput = document.getElementById('fileInput');
@@ -124,22 +123,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const addAnotherBtn = document.getElementById('addAnotherBtn');
     const confirmationMessage = document.getElementById('confirmationMessage');
 
-
-    // --- BAZA DANYCH (SYMULACJA) ---
-    // W rzeczywistym projekcie te dane pochodziłyby z data.csv
     let eventData = [
         { ID_Wydarzenia: 'VERZO_20241123', Data_Wydarzenia: '2024-11-23', Nazwa_Wydarzenia: 'Andrzejki z Power Play', Organizator: 'Verzo', Miasto: 'Roosendaal', Kraj: 'NL', Lokalizacja_Venue: 'Klub Verzo', Pojemność_Venue: 600, Typ_Wydarzenia: 'Impreza klubowa', Podtyp_Wydarzenia: 'Koncert live act', Główny_Artysta_Headliner: 'Power Play', Support_DJs_Artyści: 'DJ Matys', Styl_Muzyczny: 'Disco Polo, Dance', Grupa_Docelowa_Target: 'Fani Disco Polo', Cena_Biletu_Early_Bird: 20.00, Cena_Biletu_Regular: 25.00, Cena_Biletu_w_Dniu_Imprezy: 30.00, Promocje_Specjalne: 'Brak', FB_Liczba_Uczestników: 450, FB_Liczba_Zainteresowanych: 1300, Szacowana_Frekwencja: 'Wysoka (75-90%)', Feedback_Po_Imprezie: 'Super energia, świetny koncert.', Konkurencja_w_Tym_Samym_Czasie: 'Brak', Kluczowe_Wnioski_Agenta: 'Koncerty disco polo to pewniak, przyciągają dedykowaną publiczność gotową zapłacić więcej za bilet.' },
         { ID_Wydarzenia: 'LUNA_20250614', Data_Wydarzenia: '2025-06-14', Nazwa_Wydarzenia: 'Tween Birthday Party', Organizator: 'Klub Luna', Miasto: 'Loosbroek', Kraj: 'NL', Lokalizacja_Venue: 'Klub Luna', Pojemność_Venue: 800, Typ_Wydarzenia: 'Impreza klubowa', Podtyp_Wydarzenia: 'Urodziny rezydenta', Główny_Artysta_Headliner: 'DJ Tween', Support_DJs_Artyści: 'SPLT, TKKN, Marty, Sonic, Abrixsound', Styl_Muzyczny: 'Club, Dance, Hardstyle', Grupa_Docelowa_Target: 'Stali bywalcy, fani mocniejszych brzmień', Cena_Biletu_Early_Bird: 12.50, Cena_Biletu_Regular: 17.50, Cena_Biletu_w_Dniu_Imprezy: 20.00, Promocje_Specjalne: 'Panie wstęp free do 23:00, 100 darmowych drinków', FB_Liczba_Uczestników: 410, FB_Liczba_Zainteresowanych: 1500, Szacowana_Frekwencja: 'Wyprzedane', Feedback_Po_Imprezie: 'Pełen klub, niesamowita energia. Najlepsza impreza od miesięcy.', Konkurencja_w_Tym_Samym_Czasie: 'Brak', Kluczowe_Wnioski_Agenta: 'Połączenie urodzin rezydenta, silnego line-upu i atrakcyjnych promocji to przepis na wyprzedany event.' }
     ];
-    
-    // --- FUNKCJE I LOGIKA ---
     
     function showStep(step) {
         [uploadStep, processingStep, reviewStep, confirmationStep].forEach(s => s.classList.add('hidden'));
         step.classList.remove('hidden');
     }
 
-    // Obsługa Drag & Drop
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
         dropZone.classList.add('drag-over');
@@ -176,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = async () => {
             const base64Image = reader.result.split(',')[1];
             try {
-                const extractedData = await extractEventDataFromImage(base64Image);
+                const extractedData = await extractEventDataFromImage(base64Image, file.type);
                 const existingEvent = findExistingEvent(extractedData);
                 
                 populateReviewForm(extractedData, existingEvent);
@@ -190,13 +183,13 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    async function extractEventDataFromImage(base64ImageData) {
+    async function extractEventDataFromImage(base64ImageData, mimeType) {
         const payload = {
             contents: [
                 {
                     parts: [
                         { text: "Jesteś ekspertem od wprowadzania danych, specjalizującym się w plakatach eventowych. Przeanalizuj ten plakat i wyodrębnij informacje do obiektu JSON. Kluczowe pola to: Nazwa_Wydarzenia, Data_Wydarzenia (w formacie YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto. Jeśli brakuje jakiejś informacji, zwróć pusty ciąg znaków." },
-                        { inlineData: { mime_type: "image/jpeg", data: base64ImageData } }
+                        { inlineData: { mime_type: mimeType, data: base64ImageData } }
                     ]
                 }
             ],
@@ -230,22 +223,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const result = await response.json();
-        if (result.candidates && result.candidates[0].content.parts[0].text) {
+        if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0] && result.candidates[0].content.parts[0].text) {
              const parsedJson = JSON.parse(result.candidates[0].content.parts[0].text);
-             // Prosta walidacja i normalizacja daty
-             if(parsedJson.Data_Wydarzenia) {
-                 const dateParts = parsedJson.Data_Wydarzenia.match(/(\d{1,2})[.-](\d{1,2})/);
-                 if (dateParts) {
-                     // Zakładamy bieżący lub następny rok
-                     const day = dateParts[1].padStart(2, '0');
-                     const month = dateParts[2].padStart(2, '0');
-                     const currentYear = new Date().getFullYear();
-                     parsedJson.Data_Wydarzenia = `${currentYear}-${month}-${day}`;
-                 }
-             }
+             if (parsedJson.Data_Wydarzenia) {
+                const dateMatch = parsedJson.Data_Wydarzenia.match(/(\d{1,2})[.\/-](\d{1,2})(?:[.\/-](\d{2,4}))?/);
+                if (dateMatch) {
+                    const day = dateMatch[1].padStart(2, '0');
+                    const month = dateMatch[2].padStart(2, '0');
+                    let year = dateMatch[3];
+                    const currentYear = new Date().getFullYear();
+
+                    if (!year) {
+                        const eventDateThisYear = new Date(`${currentYear}-${month}-${day}`);
+                        const today = new Date();
+                        today.setHours(0,0,0,0);
+                        
+                        if (eventDateThisYear < today) {
+                            year = currentYear + 1;
+                        } else {
+                            year = currentYear;
+                        }
+                    } else if (year.length === 2) {
+                        year = `20${year}`;
+                    }
+                    parsedJson.Data_Wydarzenia = `${year}-${month}-${day}`;
+                }
+            }
              return parsedJson;
         } else {
-            throw new Error("Nie udało się wyodrębnić danych z obrazu.");
+            throw new Error("Nie udało się wyodrębnić danych z obrazu. Odpowiedź API była niekompletna.");
         }
     }
     
@@ -253,8 +259,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!extractedData.Data_Wydarzenia) return null;
         return eventData.find(event => 
             event.Data_Wydarzenia === extractedData.Data_Wydarzenia &&
-            (event.Główny_Artysta_Headliner.toLowerCase() === extractedData.Główny_Artysta_Headliner.toLowerCase() ||
-             event.Nazwa_Wydarzenia.toLowerCase() === extractedData.Nazwa_Wydarzenia.toLowerCase())
+            ( (event.Główny_Artysta_Headliner && extractedData.Główny_Artysta_Headliner && event.Główny_Artysta_Headliner.toLowerCase() === extractedData.Główny_Artysta_Headliner.toLowerCase()) ||
+              (event.Nazwa_Wydarzenia && extractedData.Nazwa_Wydarzenia && event.Nazwa_Wydarzenia.toLowerCase() === extractedData.Nazwa_Wydarzenia.toLowerCase()) )
         );
     }
     
@@ -311,14 +317,13 @@ document.addEventListener('DOMContentLoaded', () => {
                  }
             }
         } else {
-            // Logika dodawania nowego eventu
-            const newEventId = `${(updatedData.Organizator || 'EVENT').substring(0,4).toUpperCase()}_${(updatedData.Data_Wydarzenia || 'NODATE').replace(/-/g,'')}`;
+            const newEventId = `${(updatedData.Nazwa_Wydarzenia || 'EVENT').substring(0,4).toUpperCase().replace(/\s/g,'')}_${(updatedData.Data_Wydarzenia || 'NODATE').replace(/-/g,'')}`;
             const newEvent = { ID_Wydarzenia: newEventId, ...updatedData };
             eventData.push(newEvent);
             confirmationMessage.textContent = `Pomyślnie dodano nowe wydarzenie "${newEvent.Nazwa_Wydarzenia}" do bazy danych.`;
         }
         
-        console.log("Zaktualizowana baza danych:", eventData); // Symulacja zapisu
+        console.log("Zaktualizowana baza danych (symulacja zapisu):", JSON.stringify(eventData, null, 2));
         showStep(confirmationStep);
     }
     
@@ -329,7 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showStep(uploadStep);
     }
     
-    // Event Listeners dla przycisków
     saveBtn.addEventListener('click', handleSave);
     cancelBtn.addEventListener('click', resetImporter);
     addAnotherBtn.addEventListener('click', resetImporter);
