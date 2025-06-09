@@ -45,21 +45,8 @@
             border-color: #14b8a6;
             box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.3);
         }
-        .form-input.updated {
-            background-color: #fefce8; /* yellow-50 */
-            border-color: #f59e0b; /* amber-500 */
-        }
-        .form-input.ai-suggested {
-            background-color: #f0fdfa; /* teal-50 */
-            border-left: 3px solid #14b8a6;
-        }
         .ai-badge {
-            font-size: 0.65rem;
-            font-weight: 600;
-            color: #0d9488;
-            background-color: #ccfbf1;
-            padding: 2px 6px;
-            border-radius: 99px;
+            font-size: 0.75rem;
             margin-left: 8px;
          }
     </style>
@@ -109,10 +96,7 @@
         
         <div id="reviewStep" class="hidden bg-white p-8 rounded-lg shadow-sm">
             <h2 id="reviewTitle" class="text-xl font-bold mb-4"></h2>
-            <form id="reviewForm" class="grid grid-cols-1 md:grid-cols-2 gap-4"></form>
-            <div id="enrichSection" class="mt-6 border-t pt-6">
-                 <button id="enrichBtn" class="w-full bg-amber-500 text-white py-2 px-4 rounded-md hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition font-semibold">✨ Wzbogać Dane z Internetu (AI)</button>
-            </div>
+            <form id="reviewForm" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"></form>
              <div class="mt-6 flex justify-end gap-3">
                 <button id="cancelBtn" class="bg-slate-200 text-slate-800 py-2 px-4 rounded-md hover:bg-slate-300 transition">Anuluj</button>
                 <button id="saveBtn" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition">Zapisz w Bazie Danych</button>
@@ -154,15 +138,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveAppsScriptUrlBtn = document.getElementById('saveAppsScriptUrlBtn');
     const configStatus = document.getElementById('configStatus');
     const dropZoneText = document.getElementById('dropZoneText');
-    const enrichBtn = document.getElementById('enrichBtn');
     
     const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSV5QtWbQ38EIj6_IwxYAyNyxi29ODr4aC5HFl38z5PmUXMnmBMXxX0m8YcoHPKEHxzQNb0uAwnW9sV/pub?output=csv';
     let eventData = [];
     let geminiApiKey = '';
     let appsScriptUrl = '';
     let formHeaders = [];
-    let fullFieldList = [];
-
 
     function setupConfig() {
         geminiApiKey = localStorage.getItem('geminiApiKey_importer') || '';
@@ -215,7 +196,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const lines = csvText.trim().split(/\r?\n/);
             formHeaders = lines[0].split(',').map(h => h.trim());
-            fullFieldList = formHeaders.slice(1);
             
             eventData = parseCSV(csvText, formHeaders);
             
@@ -269,17 +249,24 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Proszę wybrać plik graficzny.');
             return;
         }
-        processingText.textContent = "Analizuję poster przy użyciu AI...";
+        
         showStep(processingStep);
+        processingText.textContent = "Krok 1/2: Analizuję poster...";
 
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = async () => {
             const base64Image = reader.result.split(',')[1];
             try {
-                const extractedData = await extractEventDataFromImage(base64Image, file.type);
-                const existingEvent = findExistingEvent(extractedData);
-                populateReviewForm(extractedData, existingEvent);
+                const ocrData = await extractInitialData(base64Image, file.type);
+                
+                processingText.textContent = "Krok 2/2: Wzbogacam dane z internetu...";
+                const enrichedData = await enrichDataOnline(ocrData);
+
+                const finalData = { ...ocrData, ...enrichedData };
+
+                const existingEvent = findExistingEvent(finalData);
+                populateReviewForm(finalData, existingEvent, ocrData, enrichedData);
                 showStep(reviewStep);
             } catch (error) {
                 console.error("Error during AI processing:", error);
@@ -289,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    async function extractEventDataFromImage(base64ImageData, mimeType) {
+    async function extractInitialData(base64ImageData, mimeType) {
         const prompt = `Jesteś ekspertem od wprowadzania danych z plakatów eventowych. Przeanalizuj plakat i wyodrębnij informacje do obiektu JSON. Pola to: Nazwa_Wydarzenia, Data_Wydarzenia (format YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator (szukaj nazwy firmy, logo, URL, social media handle). Jeśli brakuje jakiejś informacji, zostaw puste pole.`;
         const payload = {
             contents: [{ parts: [{ text: prompt }, { inlineData: { mime_type: mimeType, data: base64ImageData } }] }],
@@ -300,99 +287,64 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
         const result = await response.json();
         const text = result.candidates[0].content.parts[0].text;
-        const data = JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
-
-        // Automatyczne uzupełnienie dnia tygodnia
-        if(data.Data_Wydarzenia) {
-            const date = new Date(data.Data_Wydarzenia);
-            if(!isNaN(date.getTime())){
-                const dayOfWeek = date.toLocaleDateString('pl-PL', { weekday: 'long' });
-                data.Dzień_Tygodnia = dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1);
-            }
-        }
-        return data;
-    }
-    
-    function findExistingEvent(extractedData) {
-        if (!extractedData.Data_Wydarzenia) return null;
-        return eventData.find(event => 
-            event.Data_Wydarzenia === extractedData.Data_Wydarzenia &&
-            ((event.Główny_Artysta_Headliner && extractedData.Główny_Artysta_Headliner && event.Główny_Artysta_Headliner.toLowerCase() === extractedData.Główny_Artysta_Headliner.toLowerCase()) ||
-             (event.Nazwa_Wydarzenia && extractedData.Nazwa_Wydarzenia && event.Nazwa_Wydarzenia.toLowerCase() === extractedData.Nazwa_Wydarzenia.toLowerCase()))
-        );
-    }
-    
-    function populateReviewForm(extractedData, existingEvent = null) {
-        reviewForm.innerHTML = '';
-        reviewForm.dataset.existingEventId = existingEvent ? existingEvent.ID_Wydarzenia : '';
-        reviewTitle.textContent = existingEvent ? "Znaleziono istniejące wydarzenie. Zweryfikuj dane." : "Nowe wydarzenie. Sprawdź wyodrębnione dane.";
-        
-        fullFieldList.forEach(field => {
-            const extractedValue = extractedData[field] || '';
-            const existingValue = existingEvent ? (existingEvent[field] || '') : '';
-            
-            const fieldDiv = document.createElement('div');
-            fieldDiv.innerHTML = `
-                <label for="${field}" class="block text-sm font-medium text-slate-700">${field.replace(/_/g, ' ')}</label>
-                <input type="text" id="${field}" name="${field}" value="${extractedValue || existingValue}" class="form-input mt-1" placeholder="Brak danych...">
-            `;
-            reviewForm.appendChild(fieldDiv);
-        });
-        enrichBtn.style.display = 'block';
+        return JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
     }
 
-    async function handleEnrichData() {
-        processingText.textContent = "Wzbogacam dane, szukam informacji online...";
-        showStep(processingStep);
-
-        const currentData = {};
-        const formData = new FormData(reviewForm);
-        for (let [key, value] of formData.entries()) {
-            if(value) currentData[key] = value;
-        }
-
-        const prompt = `Jesteś analitykiem danych eventowych. Na podstawie tych informacji o wydarzeniu: ${JSON.stringify(currentData)}, przeszukaj internet (symulacja) w poszukiwaniu brakujących danych. Skup się na polach, które są puste. Poszukaj: Cena_Biletu_Regular, Link_do_Wydarzenia_FB, FB_Liczba_Uczestników, FB_Liczba_Zainteresowanych, Styl_Muzyczny. Zwróć tylko te pola, dla których znalazłeś wiarygodne informacje, w formacie JSON.`;
-
+    async function enrichDataOnline(initialData) {
+        const prompt = `Jesteś analitykiem danych eventowych. Na podstawie tych informacji o wydarzeniu: ${JSON.stringify(initialData)}, przeszukaj internet (symulacja), aby uzupełnić PUSTE pola. Twoim zadaniem jest znalezienie i zwrócenie jako JSON następujących informacji: Region_Obszar (na podstawie miasta), Styl_Muzyczny (na podstawie artysty), Cena_Biletu_Regular, Link_do_Wydarzenia_FB. Zwróć tylko te pola, dla których znalazłeś wiarygodne informacje.`;
         const payload = {
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: { responseMimeType: "application/json" }
         };
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) throw new Error(`API Error during enrichment: ${response.statusText}`);
+        const result = await response.json();
+        const text = result.candidates[0].content.parts[0].text;
+        return JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
+    }
 
-        try {
-            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
-            const result = await response.json();
-            const enrichedText = result.candidates[0].content.parts[0].text;
-            const enrichedData = JSON.parse(enrichedText.replace(/```json\n?/, '').replace(/```$/, ''));
+    function findExistingEvent(data) {
+        if (!data.Data_Wydarzenia) return null;
+        return eventData.find(event => 
+            event.Data_Wydarzenia === data.Data_Wydarzenia &&
+            ((event.Główny_Artysta_Headliner && data.Główny_Artysta_Headliner && event.Główny_Artysta_Headliner.toLowerCase() === data.Główny_Artysta_Headliner.toLowerCase()) ||
+             (event.Nazwa_Wydarzenia && data.Nazwa_Wydarzenia && event.Nazwa_Wydarzenia.toLowerCase() === data.Nazwa_Wydarzenia.toLowerCase()))
+        );
+    }
+    
+    function populateReviewForm(finalData, existingEvent, ocrData, enrichedData) {
+        reviewForm.innerHTML = '';
+        reviewForm.dataset.existingEventId = existingEvent ? existingEvent.ID_Wydarzenia : '';
+        reviewTitle.textContent = existingEvent ? "Znaleziono istniejące wydarzenie. Zweryfikuj dane." : "Nowe wydarzenie. Sprawdź wyodrębnione dane.";
+        
+        fullFieldList.forEach(field => {
+            const existingValue = existingEvent ? (existingEvent[field] || '') : '';
+            const finalValue = finalData[field] || existingValue;
 
-            for (const field in enrichedData) {
-                const input = reviewForm.querySelector(`[name="${field}"]`);
-                if (input && !input.value) {
-                    input.value = enrichedData[field];
-                    input.classList.add('ai-suggested');
-                    let label = input.previousElementSibling;
-                    if(label && !label.querySelector('.ai-badge')) {
-                        label.innerHTML += '<span class="ai-badge">✨ AI</span>';
-                    }
-                }
+            const fieldDiv = document.createElement('div');
+            let badge = '';
+            if (enrichedData[field] && !ocrData[field]) {
+                badge = '<span class="ai-badge">🌐 AI (Internet)</span>';
+            } else if (ocrData[field]) {
+                 badge = '<span class="ai-badge">🖼️ AI (Poster)</span>';
             }
-            enrichBtn.style.display = 'none';
-            showStep(reviewStep);
-        } catch(error) {
-            console.error("Błąd podczas wzbogacania danych:", error);
-            alert("Nie udało się wzbogacić danych. Sprawdź konsolę.");
-            showStep(reviewStep);
-        }
+
+            fieldDiv.innerHTML = `
+                <label for="${field}" class="flex items-center text-sm font-medium text-slate-700">${field.replace(/_/g, ' ')} ${badge}</label>
+                <input type="text" id="${field}" name="${field}" value="${finalValue}" class="form-input mt-1" placeholder="Brak danych...">
+            `;
+            reviewForm.appendChild(fieldDiv);
+        });
     }
 
     function generateNewEventId(data) {
         const year = new Date(data.Data_Wydarzenia).getFullYear();
         if (isNaN(year)) return `EVENT_ERROR_DATE`;
 
-        const eventsThisYear = eventData.filter(e => e.Data_Wydarzenia.startsWith(String(year)));
+        const eventsThisYear = eventData.filter(e => e.ID_Wydarzenia.startsWith(String(year)));
         const maxId = eventsThisYear.reduce((max, e) => {
-            const idNum = parseInt(e.ID_Wydarzenia.split('-')[1]);
+            const idNum = parseInt(e.ID_Wydarzenia.split('-')[1], 10);
             return idNum > max ? idNum : max;
         }, 0);
         
@@ -421,6 +373,12 @@ document.addEventListener('DOMContentLoaded', () => {
             eventPayload.ID_Wydarzenia = generateNewEventId(eventPayload);
         }
 
+        // Auto-uzupełnienie meta danych
+        eventPayload.Agent_Wprowadzający = "AI-OCR";
+        const isComplete = Object.values(eventPayload).every(val => val !== '');
+        eventPayload.Status_Rekordu = isComplete ? "Kompletny" : "Do weryfikacji";
+        eventPayload.Data_Ostatniej_Aktualizacji = new Date().toISOString().slice(0, 10);
+
         try {
             const response = await fetch(appsScriptUrl, {
                 method: 'POST',
@@ -432,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.status === 'success') {
                 confirmationMessage.textContent = result.message;
                 showStep(confirmationStep);
-                loadEventDatabase(); // Odśwież lokalną bazę
+                loadEventDatabase();
             } else {
                 throw new Error(result.message || 'Nieznany błąd zapisu w Google Apps Script.');
             }
@@ -454,7 +412,6 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.addEventListener('click', handleSave);
     cancelBtn.addEventListener('click', resetImporter);
     addAnotherBtn.addEventListener('click', resetImporter);
-    enrichBtn.addEventListener('click', handleEnrichData);
     
     setupConfig();
     loadEventDatabase();
