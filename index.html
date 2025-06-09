@@ -5,94 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Poster Importer - Moduł Dodawania Wydarzeń</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc; /* slate-50 */
-        }
-        .drop-zone {
-            border: 3px dashed #cbd5e1;
-            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
-        }
-        .drop-zone.drag-over {
-            background-color: #f0fdfa; /* teal-50 */
-            border-color: #14b8a6; /* teal-500 */
-        }
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: #0d9488; /* teal-600 */
-            animation: spin 1s ease infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .form-input {
-            width: 100%;
-            padding: 0.5rem 0.75rem;
-            border-radius: 0.375rem;
-            border: 1px solid #cbd5e1;
-            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        }
-        .form-input:focus {
-            outline: none;
-            border-color: #14b8a6;
-            box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.3);
-        }
-        .ai-badge {
-            font-size: 0.75rem;
-            margin-left: 8px;
-         }
-         .tab-btn {
-            padding: 0.75rem 1.5rem;
-            font-weight: 600;
-            color: #475569;
-            border-bottom: 3px solid transparent;
-            transition: color 0.2s, border-color 0.2s;
-         }
-         .tab-btn.active {
-             color: #0d9488;
-             border-color: #0d9488;
-         }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .drop-zone { border: 3px dashed #cbd5e1; transition: all 0.2s ease-in-out; }
+        .drop-zone.drag-over { background-color: #f0fdfa; border-color: #14b8a6; }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #0d9488; animation: spin 1s ease infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .form-input { width: 100%; padding: 0.5rem 0.75rem; border-radius: 0.375rem; border: 1px solid #cbd5e1; }
+        .form-input:focus { outline: none; border-color: #14b8a6; box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.3); }
+        .ai-badge { font-size: 0.75rem; margin-left: 8px; }
+        .tab-btn { padding: 0.75rem 1.5rem; font-weight: 600; color: #475569; border-bottom: 3px solid transparent; }
+        .tab-btn.active { color: #0d9488; border-color: #0d9488; }
     </style>
 </head>
 <body class="text-slate-800">
 
-    <div class="container mx-auto p-4 md:p-6 lg:p-8 max-w-4xl">
-        <header class="mb-8 text-center">
+    <div id="authScreen" class="flex items-center justify-center min-h-screen">
+        <div class="text-center p-8 bg-white shadow-lg rounded-lg">
+            <h1 class="text-2xl font-bold text-slate-900">Poster Importer AI</h1>
+            <p class="text-slate-600 mt-2 mb-6">Zaloguj się, aby rozpocząć zarządzanie bazą danych.</p>
+            <div id="gsiButton"></div>
+        </div>
+    </div>
+
+    <div id="mainApp" class="container mx-auto p-4 md:p-6 lg:p-8 max-w-4xl hidden">
+        <header class="mb-8 flex justify-between items-center">
             <h1 class="text-3xl font-bold text-slate-900">Poster Importer AI</h1>
-            <p class="text-slate-600 mt-1">Przeciągnij plakat (lub wiele), a AI zajmie się resztą.</p>
+            <div id="userProfile" class="text-right"></div>
         </header>
 
-         <!-- Sekcja Konfiguracji API -->
-        <div class="bg-white p-4 rounded-lg shadow-sm mb-8">
-            <h2 class="text-lg font-semibold mb-3 text-slate-800">Konfiguracja Połączenia z Bazą Danych</h2>
-            <div class="space-y-4">
-                 <div>
-                    <label for="apiKeyInput" class="block text-sm font-medium text-slate-700">Klucz API AI</label>
-                    <div class="flex gap-2 mt-1">
-                        <input type="password" id="apiKeyInput" placeholder="Wklej swój klucz API AI..." class="form-input flex-grow">
-                        <button id="saveApiKeyBtn" class="bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Zapisz</button>
-                    </div>
-                 </div>
-                 <div>
-                    <label for="appsScriptUrlInput" class="block text-sm font-medium text-slate-700">URL Skryptu Google Apps</label>
-                    <div class="flex gap-2 mt-1">
-                        <input type="password" id="appsScriptUrlInput" placeholder="Wklej URL wdrożonego skryptu Google..." class="form-input flex-grow">
-                        <button id="saveAppsScriptUrlBtn" class="bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Zapisz</button>
-                    </div>
-                 </div>
-            </div>
-             <div id="configStatus" class="text-sm p-3 rounded-md mt-4"></div>
-        </div>
-
-        <!-- Kroki Procesu -->
+         <!-- Kroki Procesu -->
         <div id="uploadStep" class="bg-white rounded-lg shadow-sm">
              <div class="border-b border-gray-200">
                 <nav class="-mb-px flex" aria-label="Tabs">
@@ -100,510 +46,443 @@
                     <button class="tab-btn" data-tab="bulk">Import Masowy (BULK)</button>
                 </nav>
             </div>
-            <!-- Zakładka 1: Import pojedynczy -->
-            <div id="singleTab" class="p-8">
-                <div id="dropZoneSingle" class="drop-zone flex flex-col items-center justify-center p-10 rounded-lg text-center cursor-pointer">
-                    <p id="dropZoneText" class="font-semibold text-slate-700">Wczytywanie bazy danych...</p>
-                </div>
-                <input type="file" id="fileInput" class="hidden" accept="image/png, image/jpeg">
-            </div>
-            <!-- Zakładka 2: Import masowy -->
-            <div id="bulkTab" class="p-8 hidden">
-                <div id="dropZoneBulk" class="drop-zone flex flex-col items-center justify-center p-10 rounded-lg text-center cursor-pointer">
-                     <p class="font-semibold text-slate-700">Przeciągnij do 10 plików na raz</p>
-                     <p class="text-sm text-slate-500 mt-1">lub</p>
-                     <button id="browseBtnBulk" type="button" class="mt-3 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Wybierz pliki</button>
-                </div>
-                <input type="file" id="fileInputBulk" class="hidden" accept="image/png, image/jpeg" multiple>
-                 <div class="mt-6 text-center text-slate-500">
-                     <div class="relative flex py-5 items-center">
-                        <div class="flex-grow border-t border-gray-300"></div>
-                        <span class="flex-shrink mx-4 text-gray-400 text-sm">LUB</span>
-                        <div class="flex-grow border-t border-gray-300"></div>
-                    </div>
-                     <label for="gdriveInput" class="block text-sm font-medium text-slate-700 mb-2">Wklej link do publicznego folderu Google Drive (BETA)</label>
-                      <div class="flex gap-2">
-                        <input type="text" id="gdriveInput" class="form-input flex-grow" placeholder="https://drive.google.com/drive/folders/...">
-                        <button id="gdriveBtn" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Importuj z GDrive</button>
-                      </div>
-                      <p class="text-xs text-slate-400 mt-2">Funkcja w fazie testów. Zalecane jest bezpośrednie wrzucanie plików.</p>
-                 </div>
-            </div>
+            <div id="singleTab" class="p-8"><div id="dropZoneSingle" class="drop-zone flex flex-col items-center justify-center p-10 rounded-lg text-center cursor-pointer"><p id="dropZoneText" class="font-semibold text-slate-700">Wczytywanie bazy danych...</p></div><input type="file" id="fileInput" class="hidden" accept="image/png, image/jpeg"></div>
+            <div id="bulkTab" class="p-8 hidden"><div id="dropZoneBulk" class="drop-zone flex flex-col items-center justify-center p-10 rounded-lg text-center cursor-pointer"><p class="font-semibold text-slate-700">Przeciągnij do 10 plików na raz</p><p class="text-sm text-slate-500 mt-1">lub</p><button id="browseBtnBulk" type="button" class="mt-3 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Wybierz pliki</button></div><input type="file" id="fileInputBulk" class="hidden" accept="image/png, image/jpeg" multiple></div>
         </div>
-
-        <div id="processingStep" class="hidden bg-white p-8 rounded-lg shadow-sm text-center">
-            <div class="spinner mx-auto"></div>
-            <p id="processingText" class="mt-4 font-semibold text-slate-700"></p>
-        </div>
-        
-        <div id="reviewStep" class="hidden bg-white p-8 rounded-lg shadow-sm">
-            <h2 id="reviewTitle" class="text-xl font-bold mb-4"></h2>
-            <form id="reviewForm" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"></form>
-             <div class="mt-6 flex justify-end gap-3">
-                <button id="cancelBtn" class="bg-slate-200 text-slate-800 py-2 px-4 rounded-md hover:bg-slate-300 transition">Anuluj</button>
-                <button id="saveBtn" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition">Zapisz w Bazie Danych</button>
-            </div>
-        </div>
-
-        <div id="bulkProcessingStep" class="hidden bg-white p-8 rounded-lg shadow-sm">
-            <h2 class="text-xl font-bold mb-4">Przetwarzanie Masowe</h2>
-            <div class="mb-4">
-                <div class="flex justify-between mb-1">
-                    <span class="text-base font-medium text-teal-700">Postęp</span>
-                    <span id="progressText" class="text-sm font-medium text-teal-700">0 / 0</span>
-                </div>
-                <div class="w-full bg-slate-200 rounded-full h-4">
-                    <div id="progressBar" class="bg-teal-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
-                </div>
-            </div>
-            <div id="bulkFileList" class="space-y-2 max-h-96 overflow-y-auto p-2 border rounded-md"></div>
-             <div class="mt-6 flex flex-col sm:flex-row justify-center gap-3">
-                 <button id="backToImporterBtn" class="bg-white text-teal-600 border border-teal-600 py-2 px-6 rounded-md hover:bg-teal-50 transition">Dodaj kolejne</button>
-                 <a href="dashboard.html" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition inline-block">Przejdź do pulpitu</a>
-            </div>
-        </div>
-
-        <div id="confirmationStep" class="hidden bg-white p-8 rounded-lg shadow-sm text-center">
-             <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-            </div>
-            <h2 class="text-xl font-bold mt-4">Sukces!</h2>
-            <p id="confirmationMessage" class="text-slate-600 mt-2"></p>
-            <div class="mt-6 flex flex-col sm:flex-row justify-center gap-3">
-                 <button id="addAnotherBtn" class="bg-white text-teal-600 border border-teal-600 py-2 px-6 rounded-md hover:bg-teal-50 transition">Dodaj kolejny poster</button>
-                 <a href="dashboard.html" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition inline-block">Przejdź do pulpitu analitycznego</a>
-            </div>
-        </div>
+        <div id="processingStep" class="hidden bg-white p-8 rounded-lg shadow-sm text-center"><div class="spinner mx-auto"></div><p id="processingText" class="mt-4 font-semibold text-slate-700"></p></div>
+        <div id="reviewStep" class="hidden bg-white p-8 rounded-lg shadow-sm"><h2 id="reviewTitle" class="text-xl font-bold mb-4"></h2><form id="reviewForm" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"></form><div class="mt-6 flex justify-end gap-3"><button id="cancelBtn" class="bg-slate-200 text-slate-800 py-2 px-4 rounded-md hover:bg-slate-300 transition">Anuluj</button><button id="saveBtn" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition">Zapisz w Bazie Danych</button></div></div>
+        <div id="bulkProcessingStep" class="hidden bg-white p-8 rounded-lg shadow-sm"><h2 class="text-xl font-bold mb-4">Przetwarzanie Masowe</h2><div class="mb-4"><div class="flex justify-between mb-1"><span class="text-base font-medium text-teal-700">Postęp</span><span id="progressText" class="text-sm font-medium text-teal-700">0 / 0</span></div><div class="w-full bg-slate-200 rounded-full h-4"><div id="progressBar" class="bg-teal-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div></div></div><div id="bulkFileList" class="space-y-2 max-h-96 overflow-y-auto p-2 border rounded-md"></div><div class="mt-6 flex flex-col sm:flex-row justify-center gap-3"><button id="backToImporterBtn" class="bg-white text-teal-600 border border-teal-600 py-2 px-6 rounded-md hover:bg-teal-50 transition">Dodaj kolejne</button><a href="dashboard.html" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition inline-block">Przejdź do pulpitu</a></div></div>
     </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-
-    const dropZoneSingle = document.getElementById('dropZoneSingle');
-    const dropZoneBulk = document.getElementById('dropZoneBulk');
-    const fileInput = document.getElementById('fileInput');
-    const fileInputBulk = document.getElementById('fileInputBulk');
-    const uploadStep = document.getElementById('uploadStep');
-    const processingStep = document.getElementById('processingStep');
-    const processingText = document.getElementById('processingText');
-    const reviewStep = document.getElementById('reviewStep');
-    const bulkProcessingStep = document.getElementById('bulkProcessingStep');
-    const reviewForm = document.getElementById('reviewForm');
-    const reviewTitle = document.getElementById('reviewTitle');
-    const saveBtn = document.getElementById('saveBtn');
-    const cancelBtn = document.getElementById('cancelBtn');
-    const addAnotherBtn = document.getElementById('addAnotherBtn');
-    const backToImporterBtn = document.getElementById('backToImporterBtn');
-    const confirmationMessage = document.getElementById('confirmationMessage');
-    const apiKeyInput = document.getElementById('apiKeyInput');
-    const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
-    const appsScriptUrlInput = document.getElementById('appsScriptUrlInput');
-    const saveAppsScriptUrlBtn = document.getElementById('saveAppsScriptUrlBtn');
-    const configStatus = document.getElementById('configStatus');
-    const dropZoneText = document.getElementById('dropZoneText');
-    const tabs = document.querySelectorAll('.tab-btn');
-    const tabContents = {
-        single: document.getElementById('singleTab'),
-        bulk: document.getElementById('bulkTab')
-    };
-    
+    const CLIENT_ID = '224351474213-rsi2j2r328adm26bi6rsp8476bopsg3s.apps.googleusercontent.com';
     const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSV5QtWbQ38EIj6_IwxYAyNyxi29ODr4aC5HFl38z5PmUXMnmBMXxX0m8YcoHPKEHxzQNb0uAwnW9sV/pub?output=csv';
+    let idToken = null;
     let eventData = [];
-    let geminiApiKey = '';
-    let appsScriptUrl = '';
     let formHeaders = [];
 
-    function setupConfig() {
-        geminiApiKey = localStorage.getItem('geminiApiKey_importer') || '';
-        appsScriptUrl = localStorage.getItem('appsScriptUrl_importer') || '';
-
-        apiKeyInput.value = geminiApiKey;
-        appsScriptUrlInput.value = appsScriptUrl;
-
-        let statusText = '';
-        let statusClass = '';
-
-        if (geminiApiKey && appsScriptUrl) {
-            statusText = 'Konfiguracja jest kompletna. Możesz rozpocząć importowanie.';
-            statusClass = 'bg-green-100 text-green-800';
-        } else if (geminiApiKey) {
-            statusText = 'Klucz API jest zapisany. Wklej jeszcze URL skryptu, aby zakończyć konfigurację.';
-            statusClass = 'bg-amber-100 text-amber-800';
-        } else if(appsScriptUrl) {
-            statusText = 'URL Skryptu jest zapisany. Wklej jeszcze klucz API, aby zakończyć konfigurację.';
-            statusClass = 'bg-amber-100 text-amber-800';
-        } else {
-            statusText = 'Wklej klucz API AI oraz URL skryptu Google, aby aktywować aplikację.';
-            statusClass = 'bg-red-100 text-red-800';
-        }
-        configStatus.textContent = statusText;
-        configStatus.className = `text-sm p-3 rounded-md ${statusClass}`;
+    function handleCredentialResponse(response) {
+        idToken = response.credential;
+        localStorage.setItem('idToken', idToken);
+        const user = jwt_decode(idToken);
+        document.getElementById('authScreen').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        const userProfile = document.getElementById('userProfile');
+        userProfile.innerHTML = `<p class="text-sm text-slate-600">Zalogowano jako: <strong class="text-slate-800">${user.name}</strong></p><button id="logoutBtn" class="text-xs text-red-500 hover:underline">Wyloguj</button>`;
+        document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+        loadEventDatabase();
     }
 
-    saveApiKeyBtn.addEventListener('click', () => {
-        const key = apiKeyInput.value.trim();
-        if (key) {
-            localStorage.setItem('geminiApiKey_importer', key);
-            setupConfig();
-        }
-    });
-
-    saveAppsScriptUrlBtn.addEventListener('click', () => {
-        const url = appsScriptUrlInput.value.trim();
-        if (url) {
-            localStorage.setItem('appsScriptUrl_importer', url);
-            setupConfig();
-        }
-    });
-
-    async function loadEventDatabase() {
-        try {
-            const response = await fetch(`${GOOGLE_SHEET_CSV_URL}&t=${new Date().getTime()}`);
-            if (!response.ok) throw new Error('Błąd sieci.');
-            const csvText = await response.text();
-            
-            const lines = csvText.trim().split(/\r?\n/);
-            formHeaders = lines[0].split(',').map(h => h.trim());
-            
-            eventData = parseCSV(csvText, formHeaders);
-            
-            if (dropZoneSingle) {
-                dropZoneSingle.innerHTML = `
-                    <svg class="w-12 h-12 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h2a4 4 0 014 4v1m-4 5h12m0 0l-4-4m4 4l-4 4"></path></svg>
-                    <p class="font-semibold text-slate-700">Przeciągnij i upuść plik z posterem tutaj</p>
-                    <p class="text-sm text-slate-500 mt-1">lub</p>
-                    <button id="browseBtnSingle" type="button" class="mt-3 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Wybierz plik</button>
-                `;
-                document.getElementById('browseBtnSingle').addEventListener('click', () => fileInput.click());
-            }
-
-        } catch (error) {
-            console.error(error);
-            if(dropZoneText) {
-                dropZoneText.textContent = 'Błąd ładowania bazy danych. Sprawdź link i spróbuj ponownie.';
-                dropZoneText.classList.add('text-red-600');
-            }
-        }
+    function handleLogout() {
+        idToken = null;
+        localStorage.removeItem('idToken');
+        google.accounts.id.disableAutoSelect();
+        document.getElementById('authScreen').classList.remove('hidden');
+        document.getElementById('mainApp').classList.add('hidden');
     }
 
-    function parseCSV(csvText, headers) {
-        const lines = csvText.trim().split(/\r?\n/);
-        return lines.slice(1).map(line => {
-            const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            const obj = {};
-            headers.forEach((header, index) => {
-                obj[header] = values[index] ? values[index].trim().replace(/^"|"$/g, '') : '';
-            });
-            return obj;
+    window.onload = function() {
+        google.accounts.id.initialize({
+            client_id: CLIENT_ID,
+            callback: handleCredentialResponse,
+            use_fedcm_for_prompt: false
         });
-    }
-
-    function showStep(step) {
-        [uploadStep, processingStep, reviewStep, bulkProcessingStep].forEach(s => s.classList.add('hidden'));
-        step.classList.remove('hidden');
-    }
-    
-    const setupDropZone = (dz, input) => {
-        if (!dz) return;
-        dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('drag-over'); });
-        dz.addEventListener('dragleave', (e) => { e.preventDefault(); dz.classList.remove('drag-over'); });
-        dz.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dz.classList.remove('drag-over');
-            if (e.dataTransfer.files.length) {
-                if(input.multiple) handleMultipleFiles(e.dataTransfer.files);
-                else handleFile(e.dataTransfer.files[0]);
-            }
-        });
+        google.accounts.id.renderButton(
+            document.getElementById('gsiButton'), { theme: "outline", size: "large" }
+        );
+        google.accounts.id.prompt();
     };
-    setupDropZone(dropZoneSingle, fileInput);
-    setupDropZone(dropZoneBulk, fileInputBulk);
-    
-    fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
-    fileInputBulk.addEventListener('change', () => { if (fileInputBulk.files.length) handleMultipleFiles(fileInputBulk.files); });
-    document.getElementById('browseBtnBulk').addEventListener('click', () => fileInputBulk.click());
-    
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            Object.values(tabContents).forEach(content => content.classList.add('hidden'));
-            tabContents[tab.dataset.tab].classList.remove('hidden');
+
+    function jwt_decode(token) {
+        try {
+            return JSON.parse(atob(token.split('.')[1]));
+        } catch (e) {
+            return null;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Pozostały kod JavaScript (funkcje, event listenery) pozostaje bez zmian
+        // ale jest teraz uruchamiany dopiero po udanym zalogowaniu w handleCredentialResponse
+        
+        // Funkcje pomocnicze
+        const dropZoneSingle = document.getElementById('dropZoneSingle');
+        const dropZoneBulk = document.getElementById('dropZoneBulk');
+        const fileInput = document.getElementById('fileInput');
+        const fileInputBulk = document.getElementById('fileInputBulk');
+        const uploadStep = document.getElementById('uploadStep');
+        const processingStep = document.getElementById('processingStep');
+        const processingText = document.getElementById('processingText');
+        const reviewStep = document.getElementById('reviewStep');
+        const bulkProcessingStep = document.getElementById('bulkProcessingStep');
+        const reviewForm = document.getElementById('reviewForm');
+        const reviewTitle = document.getElementById('reviewTitle');
+        const saveBtn = document.getElementById('saveBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const backToImporterBtn = document.getElementById('backToImporterBtn');
+        const dropZoneText = document.getElementById('dropZoneText');
+        const tabs = document.querySelectorAll('.tab-btn');
+        const tabContents = {
+            single: document.getElementById('singleTab'),
+            bulk: document.getElementById('bulkTab')
+        };
+
+        // Reszta funkcji (loadEventDatabase, parseCSV, showStep, etc.)
+        async function loadEventDatabase() {
+            try {
+                const response = await fetch(`${GOOGLE_SHEET_CSV_URL}&t=${new Date().getTime()}`);
+                if (!response.ok) throw new Error('Błąd sieci.');
+                const csvText = await response.text();
+                
+                const lines = csvText.trim().split(/\r?\n/);
+                formHeaders = lines[0].split(',').map(h => h.trim());
+                
+                eventData = parseCSV(csvText, formHeaders);
+                
+                if (dropZoneSingle) {
+                    dropZoneSingle.innerHTML = `
+                        <svg class="w-12 h-12 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h2a4 4 0 014 4v1m-4 5h12m0 0l-4-4m4 4l-4 4"></path></svg>
+                        <p class="font-semibold text-slate-700">Przeciągnij i upuść plik z posterem tutaj</p>
+                        <p class="text-sm text-slate-500 mt-1">lub</p>
+                        <button id="browseBtnSingle" type="button" class="mt-3 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Wybierz plik</button>
+                    `;
+                    document.getElementById('browseBtnSingle').addEventListener('click', () => fileInput.click());
+                }
+
+            } catch (error) {
+                console.error(error);
+                if(dropZoneText) {
+                    dropZoneText.textContent = 'Błąd ładowania bazy danych. Sprawdź link i spróbuj ponownie.';
+                    dropZoneText.classList.add('text-red-600');
+                }
+            }
+        }
+
+        function parseCSV(csvText, headers) {
+            const lines = csvText.trim().split(/\r?\n/);
+            return lines.slice(1).map(line => {
+                const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = values[index] ? values[index].trim().replace(/^"|"$/g, '') : '';
+                });
+                return obj;
+            });
+        }
+
+        function showStep(step) {
+            [uploadStep, processingStep, reviewStep, bulkProcessingStep].forEach(s => s.classList.add('hidden'));
+            step.classList.remove('hidden');
+        }
+
+        const setupDropZone = (dz, input) => {
+            if (!dz) return;
+            dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('drag-over'); });
+            dz.addEventListener('dragleave', (e) => { e.preventDefault(); dz.classList.remove('drag-over'); });
+            dz.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dz.classList.remove('drag-over');
+                if (e.dataTransfer.files.length) {
+                    if(input.multiple) handleMultipleFiles(e.dataTransfer.files);
+                    else handleFile(e.dataTransfer.files[0]);
+                }
+            });
+        };
+        setupDropZone(dropZoneSingle, fileInput);
+        setupDropZone(dropZoneBulk, fileInputBulk);
+        
+        fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+        fileInputBulk.addEventListener('change', () => { if (fileInputBulk.files.length) handleMultipleFiles(fileInputBulk.files); });
+        
+        const browseBtnBulk = document.getElementById('browseBtnBulk');
+        if(browseBtnBulk) {
+            browseBtnBulk.addEventListener('click', () => fileInputBulk.click());
+        }
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                Object.values(tabContents).forEach(content => content.classList.add('hidden'));
+                tabContents[tab.dataset.tab].classList.remove('hidden');
+            });
         });
+
+        async function handleFile(file) {
+             if (!idToken) {
+                alert('Sesja wygasła. Proszę się zalogować ponownie.');
+                return;
+            }
+            if (!file.type.startsWith('image/')) {
+                alert('Proszę wybrać plik graficzny.');
+                return;
+            }
+            
+            processingText.textContent = "Analizuję dane i wzbogacam informacje...";
+            showStep(processingStep);
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                const base64Image = reader.result.split(',')[1];
+                try {
+                    const finalData = await getAiAnalysis(base64Image, file.type, file.name);
+                    const existingEvent = findExistingEvent(finalData);
+                    populateReviewForm(finalData, existingEvent);
+                    showStep(reviewStep);
+                } catch (error) {
+                    console.error("Error during AI processing:", error);
+                    alert("Wystąpił błąd podczas analizy obrazu. Spróbuj ponownie.");
+                    showStep(uploadStep);
+                }
+            };
+        }
+
+        async function handleMultipleFiles(files) {
+             if (!idToken) {
+                alert('Sesja wygasła. Proszę się zalogować ponownie.');
+                return;
+            }
+            if (files.length > 10) {
+                alert("Można przetworzyć maksymalnie 10 plików na raz.");
+                return;
+            }
+            const fileQueue = Array.from(files);
+            showStep(bulkProcessingStep);
+            const fileListContainer = document.getElementById('bulkFileList');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            fileListContainer.innerHTML = '';
+            let processedCount = 0;
+            let newCount = 0;
+            let updatedCount = 0;
+            
+            progressText.textContent = `${processedCount} / ${fileQueue.length}`;
+            progressBar.style.width = '0%';
+
+            for (const file of fileQueue) {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'flex items-center gap-3 p-2 rounded-md bg-slate-50';
+                fileDiv.innerHTML = `<div id="spinner-${processedCount}" class="spinner !w-5 !h-5"></div><span class="text-sm text-slate-700">${file.name}</span><span id="status-${processedCount}" class="text-sm ml-auto text-slate-500">Przetwarzam...</span>`;
+                fileListContainer.appendChild(fileDiv);
+
+                try {
+                    const reader = new FileReader();
+                    const base64Image = await new Promise((resolve, reject) => {
+                        reader.onload = () => resolve(reader.result.split(',')[1]);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+
+                    const finalData = await getAiAnalysis(base64Image, file.type, file.name);
+                    const action = findExistingEvent(finalData) ? 'update' : 'append';
+                    const result = await saveToDatabase(finalData, action);
+                    
+                    if (result.status === 'success') {
+                        document.getElementById(`spinner-${processedCount}`).outerHTML = '<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                        if (action === 'append') newCount++;
+                        if (action === 'update') updatedCount++;
+                        document.getElementById(`status-${processedCount}`).textContent = 'Gotowe';
+                        document.getElementById(`status-${processedCount}`).className = 'text-sm ml-auto text-green-600';
+
+                        await loadEventDatabase();
+                    } else {
+                        throw new Error(result.message);
+                    }
+                } catch (err) {
+                    console.error(`Błąd przy przetwarzaniu ${file.name}:`, err);
+                    document.getElementById(`spinner-${processedCount}`).outerHTML = '<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                    document.getElementById(`status-${processedCount}`).textContent = 'Błąd';
+                    document.getElementById(`status-${processedCount}`).className = 'text-sm ml-auto text-red-600';
+                }
+                
+                processedCount++;
+                progressText.textContent = `${processedCount} / ${fileQueue.length}`;
+                progressBar.style.width = `${(processedCount / fileQueue.length) * 100}%`;
+            }
+            
+            const summary = document.createElement('div');
+            summary.className = 'mt-4 p-4 bg-teal-50 border border-teal-200 rounded-md text-center';
+            summary.innerHTML = `<h3 class="font-semibold">Przetwarzanie zakończone</h3><p>Dodano ${newCount} nowych wydarzeń i zaktualizowano ${updatedCount}.</p>`;
+            fileListContainer.prepend(summary);
+        }
+
+        async function getAiAnalysis(base64ImageData, mimeType, fileName) {
+            const prompt = `Jesteś super-asystentem analityka danych eventowych. Twoim zadaniem jest przeanalizowanie poniższego plakatu i uzupełnienie JAK NAJWIĘKSZEJ liczby pól w formacie JSON. Nazwa pliku to "${fileName}".
+            Kroki analizy:
+            1.  **Odczytaj dane z plakatu (OCR):** Odczytaj podstawowe dane takie jak Nazwa_Wydarzenia, Data_Wydarzenia (format<y_bin_564>-MM-DD, jeśli nie ma roku, użyj 0000), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator.
+            2.  **Wzbogać dane (WNIOSKOWANIE I WIEDZA ZEWNĘTRZNA):** Na podstawie odczytanych informacji, uzupełnij puste pola w tak wielu kolumnach bazy danych jak możesz:
+                * **Styl_Muzyczny**: Jaki styl muzyczny gra Główny_Artysta_Headliner?
+                * **Pojemność_Venue**: Poszukaj w internecie (symulacja) jaka jest typowa pojemność dla 'Lokalizacja_Venue' w 'Miasto'. Poszukaj po adresie albo nazwie firmy. Podaj jako liczbę.
+                * **Cena_Biletu_Regular**: Poszukaj ceny na plakacie lub zasugeruj typową cenę dla tego typu wydarzenia.
+            ZWRÓĆ JEDEN kompletny obiekt JSON. Jeśli informacji brakuje, pole ma być puste.`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }, { inlineData: { mime_type: mimeType, data: base64ImageData } }] }],
+                generationConfig: { responseMimeType: "application/json" }
+            };
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+            const result = await response.json();
+            const text = result.candidates[0].content.parts[0].text;
+            const data = JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
+
+            if (data.Data_Wydarzenia && data.Data_Wydarzenia.includes('0000')) {
+                 const fileYearMatch = fileName.match(/\b(20\d{2})\b/);
+                 const fileYear = fileYearMatch ? parseInt(fileYearMatch[0], 10) : null;
+                 
+                 let yearToUse = fileYear;
+                 const monthDay = data.Data_Wydarzenia.substring(5); // "06-14"
+
+                 if (!yearToUse) {
+                    const currentYear = new Date().getFullYear();
+                    const dateThisYear = new Date(`${currentYear}-${monthDay}`);
+                    const dateNextYear = new Date(`${currentYear + 1}-${monthDay}`);
+                    
+                    const isSaturdayThisYear = dateThisYear.getDay() === 6;
+                    const isSaturdayNextYear = dateNextYear.getDay() === 6;
+
+                    if (isSaturdayThisYear) { yearToUse = currentYear; } 
+                    else if (isSaturdayNextYear) { yearToUse = currentYear + 1; } 
+                    else {
+                        const today = new Date();
+                        today.setHours(0,0,0,0);
+                        yearToUse = (dateThisYear >= today) ? currentYear : currentYear + 1;
+                    }
+                 }
+                 data.Data_Wydarzenia = `${yearToUse}-${monthDay}`;
+            }
+            
+            if (data.Data_Wydarzenia) {
+                const date = new Date(data.Data_Wydarzenia);
+                if (!isNaN(date.getTime())) {
+                    const dayOfWeek = date.toLocaleDateString('pl-PL', { weekday: 'long' });
+                    data.Dzień_Tygodnia = dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1);
+                }
+            }
+            return data;
+        }
+    
+        function findExistingEvent(extractedData) {
+            if (!extractedData.Data_Wydarzenia) return null;
+            const extractedDate = extractedData.Data_Wydarzenia;
+            
+            return eventData.find(event => {
+                let score = 0;
+                if (event.Data_Wydarzenia === extractedDate) score += 5;
+                if (event.Główny_Artysta_Headliner && extractedData.Główny_Artysta_Headliner && event.Główny_Artysta_Headliner.toLowerCase() === extractedData.Główny_Artysta_Headliner.toLowerCase()) score += 4;
+                if (event.Nazwa_Wydarzenia && extractedData.Nazwa_Wydarzenia && event.Nazwa_Wydarzenia.toLowerCase().includes(extractedData.Nazwa_Wydarzenia.toLowerCase())) score += 2;
+                if (event.Miasto && extractedData.Miasto && event.Miasto.toLowerCase() === extractedData.Miasto.toLowerCase()) score += 2;
+                
+                return score >= 7; 
+            });
+        }
+        
+        function populateReviewForm(finalData, existingEvent) {
+            reviewForm.innerHTML = '';
+            reviewForm.dataset.existingEventId = existingEvent ? existingEvent.ID_Wydarzenia : '';
+            reviewTitle.textContent = existingEvent ? "Znaleziono istniejące wydarzenie. Zweryfikuj dane." : "Nowe wydarzenie. Sprawdź wyodrębnione dane.";
+            
+            formHeaders.slice(1).forEach(field => {
+                const finalValue = (existingEvent && existingEvent[field]) ? existingEvent[field] : (finalData[field] || '');
+                const isAiSuggested = !existingEvent && finalData[field];
+
+                const fieldDiv = document.createElement('div');
+                let badge = isAiSuggested ? '<span class="ai-badge">✨ AI</span>' : '';
+                
+                fieldDiv.innerHTML = `
+                    <label for="${field}" class="flex items-center text-sm font-medium text-slate-700">${field.replace(/_/g, ' ')} ${badge}</label>
+                    <input type="text" id="${field}" name="${field}" value="${finalValue}" class="form-input mt-1" placeholder="Brak danych...">
+                `;
+                reviewForm.appendChild(fieldDiv);
+            });
+        }
+
+        function generateNewEventId(data) {
+            const year = new Date().getFullYear();
+            const prefix = `${year}-`;
+            const eventsThisYear = eventData.filter(e => e.ID_Wydarzenia && e.ID_Wydarzenia.startsWith(prefix));
+            const maxId = eventsThisYear.reduce((max, e) => {
+                if(!e.ID_Wydarzenia.includes('-')) return max;
+                const idNum = parseInt(e.ID_Wydarzenia.split('-')[1], 10);
+                return idNum > max ? idNum : max;
+            }, 0);
+            
+            const newIdNum = (maxId + 1).toString().padStart(3, '0');
+            return `${prefix}${newIdNum}`;
+        }
+
+        async function saveToDatabase(eventPayload, action) {
+             if (action === 'append') {
+                eventPayload.ID_Wydarzenia = generateNewEventId(eventPayload);
+            } else {
+                const existing = findExistingEvent(eventPayload);
+                eventPayload.ID_Wydarzenia = existing.ID_Wydarzenia;
+            }
+            
+            eventPayload.Agent_Wprowadzający = "AI-OCR";
+            const requiredFields = ['Nazwa_Wydarzenia', 'Data_Wydarzenia', 'Organizator', 'Miasto', 'Kraj', 'Lokalizacja_Venue', 'Główny_Artysta_Headliner'];
+            const isComplete = requiredFields.every(field => eventPayload[field] && eventPayload[field].trim() !== '');
+            eventPayload.Status_Rekordu = isComplete ? "Kompletny" : "Do weryfikacji";
+            eventPayload.Data_Ostatniej_Aktualizacji = new Date().toISOString().slice(0, 10);
+
+            const response = await fetch(appsScriptUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({
+                    token: idToken,
+                    action: action,
+                    data: eventPayload
+                })
+            });
+            return await response.json();
+        }
+
+        async function handleSave() {
+            processingText.textContent = "Zapisywanie danych w Arkuszu Google...";
+            showStep(processingStep);
+
+            const formData = new FormData(reviewForm);
+            const eventPayload = {};
+            for (let [key, value] of formData.entries()) {
+                eventPayload[key] = value;
+            }
+
+            try {
+                const action = reviewForm.dataset.existingEventId ? 'update' : 'append';
+                const result = await saveToDatabase(eventPayload, action);
+
+                if (result.status === 'success') {
+                    const confirmationMessage = document.getElementById('confirmationMessage');
+                    confirmationMessage.textContent = result.message;
+                    showStep(confirmationStep);
+                    loadEventDatabase();
+                } else {
+                    throw new Error(result.message || 'Nieznany błąd zapisu w Google Apps Script.');
+                }
+
+            } catch (error) {
+                console.error("Błąd zapisu danych:", error);
+                alert(`Wystąpił błąd podczas zapisu danych: ${error.message}`);
+                showStep(reviewStep);
+            }
+        }
+        
+        function resetImporter() {
+            fileInput.value = '';
+            fileInputBulk.value = '';
+            reviewForm.innerHTML = '';
+            reviewForm.dataset.existingEventId = '';
+            showStep(uploadStep);
+        }
+        
+        saveBtn.addEventListener('click', handleSave);
+        cancelBtn.addEventListener('click', resetImporter);
+        backToImporterBtn.addEventListener('click', resetImporter);
     });
 
-    async function handleFile(file) {
-        if (!geminiApiKey || !appsScriptUrl) {
-            alert('Proszę najpierw skonfigurować klucz API AI oraz URL skryptu Google Apps.');
-            return;
-        }
-        if (!file.type.startsWith('image/')) {
-            alert('Proszę wybrać plik graficzny.');
-            return;
-        }
-        
-        processingText.textContent = "Analizuję dane i wzbogacam informacje...";
-        showStep(processingStep);
-
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async () => {
-            const base64Image = reader.result.split(',')[1];
-            try {
-                const finalData = await getAiAnalysis(base64Image, file.type, file.name);
-                const existingEvent = findExistingEvent(finalData);
-                populateReviewForm(finalData, existingEvent);
-                showStep(reviewStep);
-            } catch (error) {
-                console.error("Error during AI processing:", error);
-                alert("Wystąpił błąd podczas analizy obrazu. Spróbuj ponownie.");
-                showStep(uploadStep);
-            }
-        };
-    }
-    
-    async function handleMultipleFiles(files) {
-        if (files.length > 10) {
-            alert("Można przetworzyć maksymalnie 10 plików na raz.");
-            return;
-        }
-        const fileQueue = Array.from(files);
-        showStep(bulkProcessingStep);
-        const fileListContainer = document.getElementById('bulkFileList');
-        const progressBar = document.getElementById('progressBar');
-        const progressText = document.getElementById('progressText');
-        
-        fileListContainer.innerHTML = '';
-        let processedCount = 0;
-        let newCount = 0;
-        let updatedCount = 0;
-        
-        progressText.textContent = `${processedCount} / ${fileQueue.length}`;
-        progressBar.style.width = '0%';
-
-        for (const file of fileQueue) {
-            const fileDiv = document.createElement('div');
-            fileDiv.className = 'flex items-center gap-3 p-2 rounded-md bg-slate-50';
-            fileDiv.innerHTML = `<div id="spinner-${processedCount}" class="spinner !w-5 !h-5"></div><span class="text-sm text-slate-700">${file.name}</span><span id="status-${processedCount}" class="text-sm ml-auto text-slate-500">Przetwarzam...</span>`;
-            fileListContainer.appendChild(fileDiv);
-
-            try {
-                const reader = new FileReader();
-                const base64Image = await new Promise((resolve, reject) => {
-                    reader.onload = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
-
-                const finalData = await getAiAnalysis(base64Image, file.type, file.name);
-                const action = findExistingEvent(finalData) ? 'update' : 'append';
-                const result = await saveToDatabase(finalData, action);
-                
-                if (result.status === 'success') {
-                    document.getElementById(`spinner-${processedCount}`).outerHTML = '<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-                    if (action === 'append') newCount++;
-                    if (action === 'update') updatedCount++;
-                    document.getElementById(`status-${processedCount}`).textContent = 'Gotowe';
-                    document.getElementById(`status-${processedCount}`).className = 'text-sm ml-auto text-green-600';
-
-                    await loadEventDatabase();
-                } else {
-                    throw new Error(result.message);
-                }
-            } catch (err) {
-                console.error(`Błąd przy przetwarzaniu ${file.name}:`, err);
-                document.getElementById(`spinner-${processedCount}`).outerHTML = '<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-                document.getElementById(`status-${processedCount}`).textContent = 'Błąd';
-                document.getElementById(`status-${processedCount}`).className = 'text-sm ml-auto text-red-600';
-            }
-            
-            processedCount++;
-            progressText.textContent = `${processedCount} / ${fileQueue.length}`;
-            progressBar.style.width = `${(processedCount / fileQueue.length) * 100}%`;
-        }
-        
-        const summary = document.createElement('div');
-        summary.className = 'mt-4 p-4 bg-teal-50 border border-teal-200 rounded-md text-center';
-        summary.innerHTML = `<h3 class="font-semibold">Przetwarzanie zakończone</h3><p>Dodano ${newCount} nowych wydarzeń i zaktualizowano ${updatedCount}.</p>`;
-        fileListContainer.prepend(summary);
-    }
-
-
-    async function getAiAnalysis(base64ImageData, mimeType, fileName) {
-        const prompt = `Jesteś super-asystentem analityka danych eventowych. Twoim zadaniem jest przeanalizowanie poniższego plakatu i uzupełnienie JAK NAJWIĘKSZEJ liczby pól w formacie JSON. Nazwa pliku to "${fileName}".
-        Kroki analizy:
-        1.  **Odczytaj dane z plakatu (OCR):** Odczytaj podstawowe dane takie jak Nazwa_Wydarzenia, Data_Wydarzenia (format<y_bin_564>-MM-DD, jeśli nie ma roku, użyj 0000), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator.
-        2.  **Wzbogać dane (WNIOSKOWANIE I WIEDZA ZEWNĘTRZNA):** Na podstawie odczytanych informacji, uzupełnij puste pola w tak wielu kolumnach bazy danych jak możesz:
-            * **Styl_Muzyczny**: Jaki styl muzyczny gra Główny_Artysta_Headliner?
-            * **Pojemność_Venue**: Poszukaj w internecie (symulacja) jaka jest typowa pojemność dla 'Lokalizacja_Venue' w 'Miasto'. Poszukaj po adresie albo nazwie firmy. Podaj jako liczbę.
-            * **Cena_Biletu_Regular**: Poszukaj ceny na plakacie lub zasugeruj typową cenę dla tego typu wydarzenia.
-        ZWRÓĆ JEDEN kompletny obiekt JSON. Jeśli informacji brakuje, pole ma być puste.`;
-        
-        const payload = {
-            contents: [{ parts: [{ text: prompt }, { inlineData: { mime_type: mimeType, data: base64ImageData } }] }],
-            generationConfig: { responseMimeType: "application/json" }
-        };
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
-        const result = await response.json();
-        const text = result.candidates[0].content.parts[0].text;
-        const data = JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
-
-        if (data.Data_Wydarzenia && data.Data_Wydarzenia.includes('0000')) {
-             const fileYearMatch = fileName.match(/\b(20\d{2})\b/);
-             const fileYear = fileYearMatch ? parseInt(fileYearMatch[0], 10) : null;
-             
-             let yearToUse = fileYear;
-             const monthDay = data.Data_Wydarzenia.substring(5); // "06-14"
-
-             if (!yearToUse) {
-                const currentYear = new Date().getFullYear();
-                const dateThisYear = new Date(`${currentYear}-${monthDay}`);
-                const dateNextYear = new Date(`${currentYear + 1}-${monthDay}`);
-                
-                const isSaturdayThisYear = dateThisYear.getDay() === 6;
-                const isSaturdayNextYear = dateNextYear.getDay() === 6;
-
-                if (isSaturdayThisYear) { yearToUse = currentYear; } 
-                else if (isSaturdayNextYear) { yearToUse = currentYear + 1; } 
-                else {
-                    const today = new Date();
-                    today.setHours(0,0,0,0);
-                    yearToUse = (dateThisYear >= today) ? currentYear : currentYear + 1;
-                }
-             }
-             data.Data_Wydarzenia = `${yearToUse}-${monthDay}`;
-        }
-        
-        if (data.Data_Wydarzenia) {
-            const date = new Date(data.Data_Wydarzenia);
-            if (!isNaN(date.getTime())) {
-                const dayOfWeek = date.toLocaleDateString('pl-PL', { weekday: 'long' });
-                data.Dzień_Tygodnia = dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1);
-            }
-        }
-        return data;
-    }
-    
-    function findExistingEvent(extractedData) {
-        if (!extractedData.Data_Wydarzenia) return null;
-        const extractedDate = extractedData.Data_Wydarzenia;
-        
-        return eventData.find(event => {
-            let score = 0;
-            if (event.Data_Wydarzenia === extractedDate) score += 5;
-            if (event.Główny_Artysta_Headliner && extractedData.Główny_Artysta_Headliner && event.Główny_Artysta_Headliner.toLowerCase() === extractedData.Główny_Artysta_Headliner.toLowerCase()) score += 4;
-            if (event.Nazwa_Wydarzenia && extractedData.Nazwa_Wydarzenia && event.Nazwa_Wydarzenia.toLowerCase().includes(extractedData.Nazwa_Wydarzenia.toLowerCase())) score += 2;
-            if (event.Miasto && extractedData.Miasto && event.Miasto.toLowerCase() === extractedData.Miasto.toLowerCase()) score += 2;
-            
-            return score >= 7; 
-        });
-    }
-    
-    function populateReviewForm(finalData, existingEvent) {
-        reviewForm.innerHTML = '';
-        reviewForm.dataset.existingEventId = existingEvent ? existingEvent.ID_Wydarzenia : '';
-        reviewTitle.textContent = existingEvent ? "Znaleziono istniejące wydarzenie. Zweryfikuj dane." : "Nowe wydarzenie. Sprawdź wyodrębnione dane.";
-        
-        formHeaders.slice(1).forEach(field => {
-            const finalValue = (existingEvent && existingEvent[field]) ? existingEvent[field] : (finalData[field] || '');
-            const isAiSuggested = !existingEvent && finalData[field];
-
-            const fieldDiv = document.createElement('div');
-            let badge = isAiSuggested ? '<span class="ai-badge">✨ AI</span>' : '';
-            
-            fieldDiv.innerHTML = `
-                <label for="${field}" class="flex items-center text-sm font-medium text-slate-700">${field.replace(/_/g, ' ')} ${badge}</label>
-                <input type="text" id="${field}" name="${field}" value="${finalValue}" class="form-input mt-1" placeholder="Brak danych...">
-            `;
-            reviewForm.appendChild(fieldDiv);
-        });
-    }
-
-    function generateNewEventId(data) {
-        const year = new Date().getFullYear();
-        const prefix = `${year}-`;
-        const eventsThisYear = eventData.filter(e => e.ID_Wydarzenia && e.ID_Wydarzenia.startsWith(prefix));
-        const maxId = eventsThisYear.reduce((max, e) => {
-            if(!e.ID_Wydarzenia.includes('-')) return max;
-            const idNum = parseInt(e.ID_Wydarzenia.split('-')[1], 10);
-            return idNum > max ? idNum : max;
-        }, 0);
-        
-        const newIdNum = (maxId + 1).toString().padStart(3, '0');
-        return `${prefix}${newIdNum}`;
-    }
-
-    async function saveToDatabase(eventPayload, action) {
-        if (action === 'append') {
-            eventPayload.ID_Wydarzenia = generateNewEventId(eventPayload);
-        } else {
-            const existing = findExistingEvent(eventPayload);
-            eventPayload.ID_Wydarzenia = existing.ID_Wydarzenia;
-        }
-        
-        eventPayload.Agent_Wprowadzający = "AI-OCR";
-        const requiredFields = ['Nazwa_Wydarzenia', 'Data_Wydarzenia', 'Organizator', 'Miasto', 'Kraj', 'Lokalizacja_Venue', 'Główny_Artysta_Headliner'];
-        const isComplete = requiredFields.every(field => eventPayload[field] && eventPayload[field].trim() !== '');
-        eventPayload.Status_Rekordu = isComplete ? "Kompletny" : "Do weryfikacji";
-        eventPayload.Data_Ostatniej_Aktualizacji = new Date().toISOString().slice(0, 10);
-
-        const response = await fetch(appsScriptUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({ action: action, data: eventPayload })
-        });
-        return await response.json();
-    }
-
-
-    async function handleSave() {
-        processingText.textContent = "Zapisywanie danych w Arkuszu Google...";
-        showStep(processingStep);
-
-        const formData = new FormData(reviewForm);
-        const eventPayload = {};
-        for (let [key, value] of formData.entries()) {
-            eventPayload[key] = value;
-        }
-
-        try {
-            const action = reviewForm.dataset.existingEventId ? 'update' : 'append';
-            const result = await saveToDatabase(eventPayload, action);
-
-            if (result.status === 'success') {
-                const confirmationMessage = document.getElementById('confirmationMessage');
-                confirmationMessage.textContent = result.message;
-                showStep(confirmationStep);
-                loadEventDatabase();
-            } else {
-                throw new Error(result.message || 'Nieznany błąd zapisu w Google Apps Script.');
-            }
-
-        } catch (error) {
-            console.error("Błąd zapisu danych:", error);
-            alert(`Wystąpił błąd podczas zapisu danych: ${error.message}`);
-            showStep(reviewStep);
-        }
-    }
-    
-    function resetImporter() {
-        fileInput.value = '';
-        fileInputBulk.value = '';
-        reviewForm.innerHTML = '';
-        reviewForm.dataset.existingEventId = '';
-        showStep(uploadStep);
-    }
-    
-    saveBtn.addEventListener('click', handleSave);
-    cancelBtn.addEventListener('click', resetImporter);
-    backToImporterBtn.addEventListener('click', resetImporter);
-    
-    setupConfig();
-    loadEventDatabase();
-});
 </script>
-
 </body>
 </html>
