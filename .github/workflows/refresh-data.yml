@@ -1,0 +1,25 @@
+name: Aktualizuj Dane z Google Sheets
+
+on:
+  schedule:
+    # Uruchamia się codziennie o 3:00 w nocy czasu UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Pozwala na ręczne uruchomienie
+
+jobs:
+  refresh_csv:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pobierz kod repozytorium
+        uses: actions/checkout@v3
+
+      - name: Pobierz aktualne dane CSV
+        run: |
+          # Tutaj wklej PUBLICZNY link CSV do Twojego Arkusza Google
+          curl -L "TUTAJ_WKLEJ_SWOJ_LINK_CSV_Z_ARKUSZA_GOOGLE" -o data.csv
+
+      - name: Zatwierdź i wyślij zmiany
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "🤖 Automatyczna aktualizacja danych eventowych"
+          file_pattern: data.csv
