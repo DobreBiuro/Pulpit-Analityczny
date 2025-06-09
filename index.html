@@ -68,9 +68,9 @@
             <h2 class="text-lg font-semibold mb-3 text-slate-800">Konfiguracja Połączenia z Bazą Danych</h2>
             <div class="space-y-4">
                  <div>
-                    <label for="apiKeyInput" class="block text-sm font-medium text-slate-700">Klucz API Gemini</label>
+                    <label for="apiKeyInput" class="block text-sm font-medium text-slate-700">Klucz API AI</label>
                     <div class="flex gap-2 mt-1">
-                        <input type="password" id="apiKeyInput" placeholder="Wklej swój klucz API Gemini..." class="form-input flex-grow">
+                        <input type="password" id="apiKeyInput" placeholder="Wklej swój klucz API AI..." class="form-input flex-grow">
                         <button id="saveApiKeyBtn" class="bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Zapisz</button>
                     </div>
                  </div>
@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
             statusText = 'URL Skryptu jest zapisany. Wklej jeszcze klucz API, aby zakończyć konfigurację.';
             statusClass = 'bg-amber-100 text-amber-800';
         } else {
-            statusText = 'Wklej klucz API Gemini oraz URL skryptu Google, aby aktywować aplikację.';
+            statusText = 'Wklej klucz API AI oraz URL skryptu Google, aby aktywować aplikację.';
             statusClass = 'bg-red-100 text-red-800';
         }
         configStatus.textContent = statusText;
@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleFile(file) {
         if (!geminiApiKey || !appsScriptUrl) {
-            alert('Proszę najpierw skonfigurować klucz API Gemini oraz URL skryptu.');
+            alert('Proszę najpierw skonfigurować klucz API do AI oraz URL skryptu Google Aps.');
             return;
         }
         if (!file.type.startsWith('image/')) {
