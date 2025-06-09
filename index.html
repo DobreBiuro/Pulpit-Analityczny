@@ -74,6 +74,17 @@
         <div id="processingStep" class="hidden bg-white p-8 rounded-lg shadow-sm text-center"><div class="spinner mx-auto"></div><p id="processingText" class="mt-4 font-semibold text-slate-700"></p></div>
         <div id="reviewStep" class="hidden bg-white p-8 rounded-lg shadow-sm"><h2 id="reviewTitle" class="text-xl font-bold mb-4"></h2><form id="reviewForm" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"></form><div class="mt-6 flex justify-end gap-3"><button id="cancelBtn" class="bg-slate-200 text-slate-800 py-2 px-4 rounded-md hover:bg-slate-300 transition">Anuluj</button><button id="saveBtn" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition">Zapisz w Bazie Danych</button></div></div>
         <div id="bulkProcessingStep" class="hidden bg-white p-8 rounded-lg shadow-sm"><h2 class="text-xl font-bold mb-4">Przetwarzanie Masowe</h2><div class="mb-4"><div class="flex justify-between mb-1"><span class="text-base font-medium text-teal-700">Postęp</span><span id="progressText" class="text-sm font-medium text-teal-700">0 / 0</span></div><div class="w-full bg-slate-200 rounded-full h-4"><div id="progressBar" class="bg-teal-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div></div></div><div id="bulkFileList" class="space-y-2 max-h-96 overflow-y-auto p-2 border rounded-md"></div><div class="mt-6 flex flex-col sm:flex-row justify-center gap-3"><button id="backToImporterBtn" class="bg-white text-teal-600 border border-teal-600 py-2 px-6 rounded-md hover:bg-teal-50 transition">Dodaj kolejne</button><a href="dashboard.html" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition inline-block">Przejdź do pulpitu</a></div></div>
+        <div id="confirmationStep" class="hidden bg-white p-8 rounded-lg shadow-sm text-center">
+             <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <h2 class="text-xl font-bold mt-4">Sukces!</h2>
+            <p id="confirmationMessage" class="text-slate-600 mt-2"></p>
+            <div class="mt-6 flex flex-col sm:flex-row justify-center gap-3">
+                 <button id="addAnotherBtn" class="bg-white text-teal-600 border border-teal-600 py-2 px-6 rounded-md hover:bg-teal-50 transition">Dodaj kolejny poster</button>
+                 <a href="dashboard.html" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition inline-block">Przejdź do pulpitu analitycznego</a>
+            </div>
+        </div>
     </div>
 
 <script>
@@ -139,6 +150,7 @@
         const reviewTitle = document.getElementById('reviewTitle');
         const saveBtn = document.getElementById('saveBtn');
         const cancelBtn = document.getElementById('cancelBtn');
+        const addAnotherBtn = document.getElementById('addAnotherBtn');
         const backToImporterBtn = document.getElementById('backToImporterBtn');
         const dropZoneText = document.getElementById('dropZoneText');
         const tabs = document.querySelectorAll('.tab-btn');
