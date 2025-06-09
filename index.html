@@ -45,10 +45,6 @@
             border-color: #14b8a6;
             box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.3);
         }
-        .form-input.updated {
-            background-color: #fefce8; /* yellow-50 */
-            border-color: #f59e0b; /* amber-500 */
-        }
         .ai-badge {
             font-size: 0.75rem;
             margin-left: 8px;
@@ -262,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = async () => {
             const base64Image = reader.result.split(',')[1];
             try {
-                const finalData = await getAiAnalysis(base64Image, file.type);
+                const finalData = await getAiAnalysis(base64Image, file.type, file.name);
                 const existingEvent = findExistingEvent(finalData);
                 populateReviewForm(finalData, existingEvent);
                 showStep(reviewStep);
@@ -274,15 +270,15 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    async function getAiAnalysis(base64ImageData, mimeType) {
-        const prompt = `Jesteś super-asystentem analityka danych eventowych. Twoim zadaniem jest przeanalizowanie poniższego plakatu i uzupełnienie JAK NAJWIĘKSZEJ liczby pól w formacie JSON, zgodnie z listą: ${formHeaders.join(', ')}.
-
-Kroki analizy:
-1.  **Odczytaj dane z plakatu (OCR):** Odczytaj podstawowe dane takie jak Nazwa_Wydarzenia, Data_Wydarzenia (w formacie YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator.
-2.  **Wnioskuj i wzbogać dane:** Na podstawie odczytanych informacji, uzupełnij pozostałe pola:
-    * **Styl_Muzyczny**: Znajdź typową muzykę dla Głównego Artysty.
-    * **Cena_Biletu_Regular**: Poszukaj ceny na plakacie lub zasugeruj typową cenę dla tego typu imprezy.
-Zwróć JEDEN kompletny obiekt JSON. Jeśli jakiejś informacji nie da się znaleźć, pozostaw pole puste.`;
+    async function getAiAnalysis(base64ImageData, mimeType, fileName) {
+        const prompt = `Jesteś super-asystentem analityka danych eventowych. Przeanalizuj plakat i uzupełnij JAK NAJWIĘCEJ pól w formacie JSON. Nazwa pliku to "${fileName}".
+        KROKI:
+        1. ODZCZYTAJ DANE Z PLAKATU (OCR): Nazwa_Wydarzenia, Data_Wydarzenia (format YYYY-MM-DD, jeśli nie ma roku, użyj 0000), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator.
+        2. WZBOGAĆ DANE (WNIOSKOWANIE I WIEDZA ZEWNĘTRZNA): Na podstawie odczytanych informacji, uzupełnij puste pola:
+           - Styl_Muzyczny: Jaki styl muzyczny gra Główny_Artysta_Headliner?
+           - Region_Obszar: W jakim regionie/prowincji leży Miasto?
+           - Cena_Biletu_Regular: Czy na plakacie jest cena? Jeśli nie, podaj typową cenę dla tego typu wydarzenia.
+        ZWRÓĆ JEDEN kompletny obiekt JSON. Jeśli informacji brakuje, pole ma być puste.`;
         
         const payload = {
             contents: [{ parts: [{ text: prompt }, { inlineData: { mime_type: mimeType, data: base64ImageData } }] }],
@@ -293,7 +289,48 @@ Zwróć JEDEN kompletny obiekt JSON. Jeśli jakiejś informacji nie da się znal
         if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
         const result = await response.json();
         const text = result.candidates[0].content.parts[0].text;
-        return JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
+        const data = JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
+
+        // Inteligentna korekta daty po stronie klienta
+        if (data.Data_Wydarzenia && data.Data_Wydarzenia.startsWith('0000')) {
+             const fileYearMatch = fileName.match(/\b(20\d{2})\b/);
+             const fileYear = fileYearMatch ? parseInt(fileYearMatch[0], 10) : null;
+             
+             let yearToUse = fileYear;
+             const monthDay = data.Data_Wydarzenia.substring(5); // "06-14"
+
+             if (!yearToUse) {
+                const currentYear = new Date().getFullYear();
+                const dateThisYear = new Date(`${currentYear}-${monthDay}`);
+                const dateNextYear = new Date(`${currentYear + 1}-${monthDay}`);
+                
+                // Dzień tygodnia (0=Niedziela, 6=Sobota)
+                const isSaturdayThisYear = dateThisYear.getDay() === 6;
+                const isSaturdayNextYear = dateNextYear.getDay() === 6;
+
+                if (isSaturdayThisYear) {
+                    yearToUse = currentYear;
+                } else if (isSaturdayNextYear) {
+                    yearToUse = currentYear + 1;
+                } else {
+                    // Jeśli żadna nie jest sobotą, weź najbliższą przyszłą datę
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    yearToUse = (dateThisYear >= today) ? currentYear : currentYear + 1;
+                }
+             }
+             data.Data_Wydarzenia = `${yearToUse}-${monthDay}`;
+        }
+        
+        // Finalne uzupełnienie dnia tygodnia
+        if (data.Data_Wydarzenia) {
+            const date = new Date(data.Data_Wydarzenia);
+            if (!isNaN(date.getTime())) {
+                const dayOfWeek = date.toLocaleDateString('pl-PL', { weekday: 'long' });
+                data.Dzień_Tygodnia = dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1);
+            }
+        }
+        return data;
     }
     
     function findExistingEvent(extractedData) {
@@ -310,15 +347,7 @@ Zwróć JEDEN kompletny obiekt JSON. Jeśli jakiejś informacji nie da się znal
         reviewForm.dataset.existingEventId = existingEvent ? existingEvent.ID_Wydarzenia : '';
         reviewTitle.textContent = existingEvent ? "Znaleziono istniejące wydarzenie. Zweryfikuj dane." : "Nowe wydarzenie. Sprawdź wyodrębnione dane.";
         
-        if (finalData.Data_Wydarzenia) {
-            const date = new Date(finalData.Data_Wydarzenia);
-            if (!isNaN(date.getTime())) {
-                const dayOfWeek = date.toLocaleDateString('pl-PL', { weekday: 'long' });
-                finalData.Dzień_Tygodnia = dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1);
-            }
-        }
-        
-        formHeaders.slice(1).forEach(field => { // Pomiń ID
+        formHeaders.slice(1).forEach(field => {
             const finalValue = (existingEvent && existingEvent[field]) ? existingEvent[field] : (finalData[field] || '');
             const isAiSuggested = !existingEvent && finalData[field];
 
@@ -339,6 +368,7 @@ Zwróć JEDEN kompletny obiekt JSON. Jeśli jakiejś informacji nie da się znal
 
         const eventsThisYear = eventData.filter(e => e.ID_Wydarzenia && e.ID_Wydarzenia.startsWith(String(year)));
         const maxId = eventsThisYear.reduce((max, e) => {
+            if(!e.ID_Wydarzenia.includes('-')) return max;
             const idNum = parseInt(e.ID_Wydarzenia.split('-')[1], 10);
             return idNum > max ? idNum : max;
         }, 0);
