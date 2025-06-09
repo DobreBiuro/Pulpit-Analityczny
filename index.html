@@ -53,21 +53,7 @@
             background-color: #f0fdfa; /* teal-50 */
             border-left: 3px solid #14b8a6;
         }
-        .copy-button {
-            position: absolute;
-            top: 0.5rem;
-            right: 0.5rem;
-            background-color: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            padding: 0.25rem 0.5rem;
-            font-size: 0.75rem;
-            border-radius: 0.25rem;
-            cursor: pointer;
-        }
-         .copy-button:hover {
-            background-color: #e2e8f0;
-         }
-         .ai-badge {
+        .ai-badge {
             font-size: 0.65rem;
             font-weight: 600;
             color: #0d9488;
@@ -88,14 +74,24 @@
 
          <!-- Sekcja Konfiguracji API -->
         <div class="bg-white p-4 rounded-lg shadow-sm mb-8">
-            <h2 class="text-lg font-semibold mb-3 text-slate-800">Konfiguracja API Gemini</h2>
-            <div id="apiKeyStatus" class="text-sm p-3 rounded-md mb-3"></div>
-            <div class="flex flex-col sm:flex-row gap-2">
-                <input type="password" id="apiKeyInput" placeholder="Wklej swój klucz API Gemini..." class="flex-grow block w-full px-3 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md">
-                <button id="saveApiKeyBtn" class="bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Zapisz Klucz</button>
-                <button id="clearApiKeyBtn" class="bg-slate-200 text-slate-800 py-2 px-4 rounded-md hover:bg-slate-300">Wyczyść</button>
+            <h2 class="text-lg font-semibold mb-3 text-slate-800">Konfiguracja Połączenia z Bazą Danych</h2>
+            <div class="space-y-4">
+                 <div>
+                    <label for="apiKeyInput" class="block text-sm font-medium text-slate-700">Klucz API Gemini</label>
+                    <div class="flex gap-2 mt-1">
+                        <input type="password" id="apiKeyInput" placeholder="Wklej swój klucz API Gemini..." class="form-input flex-grow">
+                        <button id="saveApiKeyBtn" class="bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Zapisz</button>
+                    </div>
+                 </div>
+                 <div>
+                    <label for="appsScriptUrlInput" class="block text-sm font-medium text-slate-700">URL Skryptu Google Apps</label>
+                    <div class="flex gap-2 mt-1">
+                        <input type="password" id="appsScriptUrlInput" placeholder="Wklej URL wdrożonego skryptu Google..." class="form-input flex-grow">
+                        <button id="saveAppsScriptUrlBtn" class="bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Zapisz</button>
+                    </div>
+                 </div>
             </div>
-            <p class="text-xs text-slate-500 mt-2">Twój klucz jest zapisywany tylko w Twojej przeglądarce i nie jest nigdzie wysyłany. <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-teal-600 underline">Zdobądź klucz API tutaj.</a></p>
+             <div id="configStatus" class="text-sm p-3 rounded-md mt-4"></div>
         </div>
 
         <!-- Kroki Procesu -->
@@ -119,18 +115,16 @@
             </div>
              <div class="mt-6 flex justify-end gap-3">
                 <button id="cancelBtn" class="bg-slate-200 text-slate-800 py-2 px-4 rounded-md hover:bg-slate-300 transition">Anuluj</button>
-                <button id="saveBtn" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition">Generuj Wpis do Bazy</button>
+                <button id="saveBtn" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition">Zapisz w Bazie Danych</button>
             </div>
         </div>
 
-        <div id="confirmationStep" class="hidden bg-white p-8 rounded-lg shadow-sm">
-            <h2 class="text-xl font-bold mb-4">Sukces! Skopiuj poniższy wiersz CSV.</h2>
-            <p id="confirmationMessage" class="text-slate-600 mb-3"></p>
-            <div class="relative">
-                <textarea id="csvOutput" readonly class="w-full h-24 p-2 font-mono text-sm bg-slate-100 rounded-md border border-slate-300"></textarea>
-                <button id="copyCsvBtn" class="copy-button">Kopiuj</button>
+        <div id="confirmationStep" class="hidden bg-white p-8 rounded-lg shadow-sm text-center">
+             <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
             </div>
-            <p class="text-sm text-slate-500 mt-2">Wklej ten wiersz na końcu swojego Arkusza Google, aby zapisać zmiany.</p>
+            <h2 class="text-xl font-bold mt-4">Sukces!</h2>
+            <p id="confirmationMessage" class="text-slate-600 mt-2"></p>
             <div class="mt-6 flex flex-col sm:flex-row justify-center gap-3">
                  <button id="addAnotherBtn" class="bg-white text-teal-600 border border-teal-600 py-2 px-6 rounded-md hover:bg-teal-50 transition">Dodaj kolejny poster</button>
                  <a href="dashboard.html" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition inline-block">Przejdź do pulpitu analitycznego</a>
@@ -154,31 +148,63 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelBtn = document.getElementById('cancelBtn');
     const addAnotherBtn = document.getElementById('addAnotherBtn');
     const confirmationMessage = document.getElementById('confirmationMessage');
-    const csvOutput = document.getElementById('csvOutput');
-    const copyCsvBtn = document.getElementById('copyCsvBtn');
     const apiKeyInput = document.getElementById('apiKeyInput');
     const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
-    const clearApiKeyBtn = document.getElementById('clearApiKeyBtn');
-    const apiKeyStatus = document.getElementById('apiKeyStatus');
+    const appsScriptUrlInput = document.getElementById('appsScriptUrlInput');
+    const saveAppsScriptUrlBtn = document.getElementById('saveAppsScriptUrlBtn');
+    const configStatus = document.getElementById('configStatus');
     const dropZoneText = document.getElementById('dropZoneText');
     const enrichBtn = document.getElementById('enrichBtn');
     
     const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSV5QtWbQ38EIj6_IwxYAyNyxi29ODr4aC5HFl38z5PmUXMnmBMXxX0m8YcoHPKEHxzQNb0uAwnW9sV/pub?output=csv';
     let eventData = [];
     let geminiApiKey = '';
+    let appsScriptUrl = '';
     let formHeaders = [];
 
-    function setupApiKey() {
-        geminiApiKey = localStorage.getItem('geminiApiKey') || '';
-        if (geminiApiKey) {
-            apiKeyInput.value = geminiApiKey;
-            apiKeyStatus.textContent = 'Klucz API jest zapisany i aktywny.';
-            apiKeyStatus.className = 'text-sm p-3 rounded-md mb-3 bg-green-100 text-green-800';
+    function setupConfig() {
+        geminiApiKey = localStorage.getItem('geminiApiKey_importer') || '';
+        appsScriptUrl = localStorage.getItem('appsScriptUrl_importer') || '';
+
+        apiKeyInput.value = geminiApiKey;
+        appsScriptUrlInput.value = appsScriptUrl;
+
+        let statusText = '';
+        let statusClass = '';
+
+        if (geminiApiKey && appsScriptUrl) {
+            statusText = 'Konfiguracja jest kompletna. Możesz rozpocząć importowanie.';
+            statusClass = 'bg-green-100 text-green-800';
+        } else if (geminiApiKey) {
+            statusText = 'Klucz API jest zapisany. Wklej jeszcze URL skryptu, aby zakończyć konfigurację.';
+            statusClass = 'bg-amber-100 text-amber-800';
+        } else if(appsScriptUrl) {
+            statusText = 'URL Skryptu jest zapisany. Wklej jeszcze klucz API, aby zakończyć konfigurację.';
+            statusClass = 'bg-amber-100 text-amber-800';
         } else {
-            apiKeyStatus.textContent = 'Brak klucza API. Funkcje AI są wyłączone. Wklej klucz poniżej, aby je aktywować.';
-            apiKeyStatus.className = 'text-sm p-3 rounded-md mb-3 bg-amber-100 text-amber-800';
+            statusText = 'Wklej klucz API Gemini oraz URL skryptu Google, aby aktywować aplikację.';
+            statusClass = 'bg-red-100 text-red-800';
         }
+        configStatus.textContent = statusText;
+        configStatus.className = `text-sm p-3 rounded-md ${statusClass}`;
     }
+
+    saveApiKeyBtn.addEventListener('click', () => {
+        const key = apiKeyInput.value.trim();
+        if (key) {
+            localStorage.setItem('geminiApiKey_importer', key);
+            setupConfig();
+        }
+    });
+
+    saveAppsScriptUrlBtn.addEventListener('click', () => {
+        const url = appsScriptUrlInput.value.trim();
+        if (url) {
+            localStorage.setItem('appsScriptUrl_importer', url);
+            setupConfig();
+        }
+    });
+
 
     async function loadEventDatabase() {
         try {
@@ -233,8 +259,8 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
 
     async function handleFile(file) {
-        if (!geminiApiKey) {
-            alert('Proszę najpierw zapisać klucz API Gemini.');
+        if (!geminiApiKey || !appsScriptUrl) {
+            alert('Proszę najpierw skonfigurować klucz API Gemini oraz URL skryptu.');
             return;
         }
         if (!file.type.startsWith('image/')) {
@@ -264,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function extractEventDataFromImage(base64ImageData, mimeType) {
         const payload = {
             contents: [{ parts: [
-                { text: `Jesteś ekspertem od wprowadzania danych z plakatów eventowych. Przeanalizuj plakat i wyodrębnij informacje do obiektu JSON. Pola to: Nazwa_Wydarzenia, Data_Wydarzenia (format YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator. Jeśli czegoś brakuje, zostaw puste pole.` },
+                { text: `Jesteś ekspertem od wprowadzania danych z plakatów eventowych. Przeanalizuj plakat i wyodrębnij informacje do obiektu JSON. Pola to: Nazwa_Wydarzenia, Data_Wydarzenia (format<y_bin_564>-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator. Jeśli czegoś brakuje, zostaw puste pole.` },
                 { inlineData: { mime_type: mimeType, data: base64ImageData } }
             ] }],
             generationConfig: { responseMimeType: "application/json" }
@@ -349,44 +375,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    function handleSave() {
+    async function handleSave() {
+        processingText.textContent = "Zapisywanie danych w Arkuszu Google...";
+        showStep(processingStep);
+
         const formData = new FormData(reviewForm);
-        const existingEventId = reviewForm.dataset.existingEventId;
-        
-        let csvRow = [];
-        let changes = [];
-        
-        if (existingEventId) {
-            const eventIndex = eventData.findIndex(e => e.ID_Wydarzenia === existingEventId);
-            const originalEvent = eventData[eventIndex];
-            
-            formHeaders.forEach(header => {
-                const newValue = formData.get(header) || originalEvent[header] || '';
-                if(header !== 'ID_Wydarzenia' && originalEvent[header] !== newValue) {
-                     changes.push(`pole "${header.replace(/_/g, ' ')}"`);
-                }
-                csvRow.push(`"${String(newValue).replace(/"/g, '""')}"`);
-            });
-
-            if (changes.length > 0) {
-                confirmationMessage.textContent = `Wygenerowano zaktualizowany wpis dla wydarzenia "${originalEvent.Nazwa_Wydarzenia}". Zmienione pola: ${changes.join(', ')}.`;
-            } else {
-                confirmationMessage.textContent = `Wygenerowano wpis dla wydarzenia "${originalEvent.Nazwa_Wydarzenia}". Dane były aktualne.`;
-            }
-
-        } else {
-             const newEvent = {};
-             formHeaders.forEach(header => {
-                 newEvent[header] = formData.get(header) || '';
-             });
-             newEvent.ID_Wydarzenia = `${(newEvent.Organizator || 'EVENT').substring(0,4).toUpperCase().replace(/\s/g,'')}_${(newEvent.Data_Wydarzenia || 'NODATE').replace(/-/g,'')}`;
-             
-             csvRow = formHeaders.map(header => `"${(newEvent[header] || '').replace(/"/g, '""')}"`);
-             confirmationMessage.textContent = `Wygenerowano wpis dla nowego wydarzenia "${newEvent.Nazwa_Wydarzenia}".`;
+        const eventPayload = {};
+        for (let [key, value] of formData.entries()) {
+            eventPayload[key] = value;
         }
         
-        csvOutput.value = csvRow.join(',');
-        showStep(confirmationStep);
+        const existingEventId = reviewForm.dataset.existingEventId;
+        if (existingEventId) {
+            eventPayload.ID_Wydarzenia = existingEventId;
+        }
+
+        try {
+            const response = await fetch(appsScriptUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' }, // Apps Script requires text/plain
+                body: JSON.stringify({
+                    action: existingEventId ? 'update' : 'append',
+                    data: eventPayload
+                })
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                confirmationMessage.textContent = result.message;
+                showStep(confirmationStep);
+                loadEventDatabase(); // Odśwież lokalną bazę
+            } else {
+                throw new Error(result.message || 'Nieznany błąd zapisu w Google Apps Script.');
+            }
+
+        } catch (error) {
+            console.error("Błąd zapisu danych:", error);
+            alert(`Wystąpił błąd podczas zapisu danych: ${error.message}`);
+            showStep(reviewStep);
+        }
     }
     
     function resetImporter() {
@@ -395,20 +422,13 @@ document.addEventListener('DOMContentLoaded', () => {
         reviewForm.dataset.existingEventId = '';
         showStep(uploadStep);
     }
-
-    copyCsvBtn.addEventListener('click', () => {
-        csvOutput.select();
-        document.execCommand('copy');
-        copyCsvBtn.textContent = 'Skopiowano!';
-        setTimeout(() => { copyCsvBtn.textContent = 'Kopiuj'; }, 2000);
-    });
     
     saveBtn.addEventListener('click', handleSave);
     cancelBtn.addEventListener('click', resetImporter);
     addAnotherBtn.addEventListener('click', resetImporter);
     enrichBtn.addEventListener('click', handleEnrichData);
     
-    setupApiKey();
+    setupConfig();
     loadEventDatabase();
 });
 </script>
