@@ -59,6 +59,19 @@
             <p class="text-slate-600 mt-1">Przeciągnij plakat, a AI zajmie się resztą.</p>
         </header>
 
+        <!-- Sekcja Konfiguracji API -->
+        <div class="bg-white p-4 rounded-lg shadow-sm mb-8">
+            <h2 class="text-lg font-semibold mb-3 text-slate-800">Konfiguracja API Gemini</h2>
+            <div id="apiKeyStatus" class="text-sm p-3 rounded-md mb-3"></div>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input type="password" id="apiKeyInput" placeholder="Wklej swój klucz API Gemini..." class="flex-grow block w-full px-3 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md">
+                <button id="saveApiKeyBtn" class="bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Zapisz Klucz</button>
+                <button id="clearApiKeyBtn" class="bg-slate-200 text-slate-800 py-2 px-4 rounded-md hover:bg-slate-300">Wyczyść</button>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">Twój klucz jest zapisywany tylko w Twojej przeglądarce i nie jest nigdzie wysyłany. <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-teal-600 underline">Zdobądź klucz API tutaj.</a></p>
+        </div>
+
+
         <!-- Krok 1: Upload -->
         <div id="uploadStep" class="bg-white p-8 rounded-lg shadow-sm">
             <div id="dropZone" class="drop-zone flex flex-col items-center justify-center p-10 rounded-lg text-center cursor-pointer">
@@ -108,7 +121,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-
+    
     const dropZone = document.getElementById('dropZone');
     const browseBtn = document.getElementById('browseBtn');
     const fileInput = document.getElementById('fileInput');
@@ -122,12 +135,46 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelBtn = document.getElementById('cancelBtn');
     const addAnotherBtn = document.getElementById('addAnotherBtn');
     const confirmationMessage = document.getElementById('confirmationMessage');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+    const clearApiKeyBtn = document.getElementById('clearApiKeyBtn');
+    const apiKeyStatus = document.getElementById('apiKeyStatus');
 
+    let geminiApiKey = '';
+    
     let eventData = [
         { ID_Wydarzenia: 'VERZO_20241123', Data_Wydarzenia: '2024-11-23', Nazwa_Wydarzenia: 'Andrzejki z Power Play', Organizator: 'Verzo', Miasto: 'Roosendaal', Kraj: 'NL', Lokalizacja_Venue: 'Klub Verzo', Pojemność_Venue: 600, Typ_Wydarzenia: 'Impreza klubowa', Podtyp_Wydarzenia: 'Koncert live act', Główny_Artysta_Headliner: 'Power Play', Support_DJs_Artyści: 'DJ Matys', Styl_Muzyczny: 'Disco Polo, Dance', Grupa_Docelowa_Target: 'Fani Disco Polo', Cena_Biletu_Early_Bird: 20.00, Cena_Biletu_Regular: 25.00, Cena_Biletu_w_Dniu_Imprezy: 30.00, Promocje_Specjalne: 'Brak', FB_Liczba_Uczestników: 450, FB_Liczba_Zainteresowanych: 1300, Szacowana_Frekwencja: 'Wysoka (75-90%)', Feedback_Po_Imprezie: 'Super energia, świetny koncert.', Konkurencja_w_Tym_Samym_Czasie: 'Brak', Kluczowe_Wnioski_Agenta: 'Koncerty disco polo to pewniak, przyciągają dedykowaną publiczność gotową zapłacić więcej za bilet.' },
         { ID_Wydarzenia: 'LUNA_20250614', Data_Wydarzenia: '2025-06-14', Nazwa_Wydarzenia: 'Tween Birthday Party', Organizator: 'Klub Luna', Miasto: 'Loosbroek', Kraj: 'NL', Lokalizacja_Venue: 'Klub Luna', Pojemność_Venue: 800, Typ_Wydarzenia: 'Impreza klubowa', Podtyp_Wydarzenia: 'Urodziny rezydenta', Główny_Artysta_Headliner: 'DJ Tween', Support_DJs_Artyści: 'SPLT, TKKN, Marty, Sonic, Abrixsound', Styl_Muzyczny: 'Club, Dance, Hardstyle', Grupa_Docelowa_Target: 'Stali bywalcy, fani mocniejszych brzmień', Cena_Biletu_Early_Bird: 12.50, Cena_Biletu_Regular: 17.50, Cena_Biletu_w_Dniu_Imprezy: 20.00, Promocje_Specjalne: 'Panie wstęp free do 23:00, 100 darmowych drinków', FB_Liczba_Uczestników: 410, FB_Liczba_Zainteresowanych: 1500, Szacowana_Frekwencja: 'Wyprzedane', Feedback_Po_Imprezie: 'Pełen klub, niesamowita energia. Najlepsza impreza od miesięcy.', Konkurencja_w_Tym_Samym_Czasie: 'Brak', Kluczowe_Wnioski_Agenta: 'Połączenie urodzin rezydenta, silnego line-upu i atrakcyjnych promocji to przepis na wyprzedany event.' }
     ];
     
+    function setupApiKey() {
+        geminiApiKey = localStorage.getItem('geminiApiKey') || '';
+        if (geminiApiKey) {
+            apiKeyInput.value = geminiApiKey;
+            apiKeyStatus.textContent = 'Klucz API jest zapisany i aktywny.';
+            apiKeyStatus.className = 'text-sm p-3 rounded-md mb-3 bg-green-100 text-green-800';
+        } else {
+            apiKeyStatus.textContent = 'Brak klucza API. Funkcje AI są wyłączone. Wklej klucz poniżej, aby je aktywować.';
+            apiKeyStatus.className = 'text-sm p-3 rounded-md mb-3 bg-amber-100 text-amber-800';
+        }
+    }
+
+    saveApiKeyBtn.addEventListener('click', () => {
+        const key = apiKeyInput.value.trim();
+        if (key) {
+            localStorage.setItem('geminiApiKey', key);
+            setupApiKey();
+        } else {
+            alert('Proszę wprowadzić klucz API.');
+        }
+    });
+
+    clearApiKeyBtn.addEventListener('click', () => {
+        localStorage.removeItem('geminiApiKey');
+        apiKeyInput.value = '';
+        setupApiKey();
+    });
+
     function showStep(step) {
         [uploadStep, processingStep, reviewStep, confirmationStep].forEach(s => s.classList.add('hidden'));
         step.classList.remove('hidden');
@@ -157,6 +204,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function handleFile(file) {
+        if (!geminiApiKey) {
+            alert('Proszę najpierw zapisać klucz API Gemini, aby korzystać z tej funkcji.');
+            return;
+        }
         if (!file.type.startsWith('image/')) {
             alert('Proszę wybrać plik graficzny.');
             return;
@@ -177,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (error) {
                 console.error("Error during AI processing:", error);
-                alert("Wystąpił błąd podczas analizy obrazu. Spróbuj ponownie.");
+                alert("Wystąpił błąd podczas analizy obrazu. Sprawdź konsolę, aby zobaczyć szczegóły.");
                 showStep(uploadStep);
             }
         };
@@ -209,8 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const apiKey = "";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
         
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -219,7 +269,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (!response.ok) {
-            throw new Error(`Błąd API: ${response.statusText}`);
+            const errorBody = await response.text();
+            throw new Error(`Błąd API: ${response.statusText}. Treść: ${errorBody}`);
         }
 
         const result = await response.json();
@@ -337,6 +388,8 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.addEventListener('click', handleSave);
     cancelBtn.addEventListener('click', resetImporter);
     addAnotherBtn.addEventListener('click', resetImporter);
+    
+    setupApiKey();
 
 });
 </script>
