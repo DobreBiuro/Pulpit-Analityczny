@@ -109,7 +109,7 @@
         
         <div id="reviewStep" class="hidden bg-white p-8 rounded-lg shadow-sm">
             <h2 id="reviewTitle" class="text-xl font-bold mb-4"></h2>
-            <form id="reviewForm" class="space-y-4"></form>
+            <form id="reviewForm" class="grid grid-cols-1 md:grid-cols-2 gap-4"></form>
             <div id="enrichSection" class="mt-6 border-t pt-6">
                  <button id="enrichBtn" class="w-full bg-amber-500 text-white py-2 px-4 rounded-md hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition font-semibold">✨ Wzbogać Dane z Internetu (AI)</button>
             </div>
@@ -161,6 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let geminiApiKey = '';
     let appsScriptUrl = '';
     let formHeaders = [];
+    let fullFieldList = [];
+
 
     function setupConfig() {
         geminiApiKey = localStorage.getItem('geminiApiKey_importer') || '';
@@ -205,15 +207,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-
     async function loadEventDatabase() {
         try {
-            const response = await fetch(GOOGLE_SHEET_CSV_URL);
+            const response = await fetch(`${GOOGLE_SHEET_CSV_URL}&t=${new Date().getTime()}`);
             if (!response.ok) throw new Error('Błąd sieci.');
             const csvText = await response.text();
             
             const lines = csvText.trim().split(/\r?\n/);
             formHeaders = lines[0].split(',').map(h => h.trim());
+            fullFieldList = formHeaders.slice(1);
             
             eventData = parseCSV(csvText, formHeaders);
             
@@ -288,11 +290,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function extractEventDataFromImage(base64ImageData, mimeType) {
+        const prompt = `Jesteś ekspertem od wprowadzania danych z plakatów eventowych. Przeanalizuj plakat i wyodrębnij informacje do obiektu JSON. Pola to: Nazwa_Wydarzenia, Data_Wydarzenia (format YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator (szukaj nazwy firmy, logo, URL, social media handle). Jeśli brakuje jakiejś informacji, zostaw puste pole.`;
         const payload = {
-            contents: [{ parts: [
-                { text: `Jesteś ekspertem od wprowadzania danych z plakatów eventowych. Przeanalizuj plakat i wyodrębnij informacje do obiektu JSON. Pola to: Nazwa_Wydarzenia, Data_Wydarzenia (format<y_bin_564>-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator. Jeśli czegoś brakuje, zostaw puste pole.` },
-                { inlineData: { mime_type: mimeType, data: base64ImageData } }
-            ] }],
+            contents: [{ parts: [{ text: prompt }, { inlineData: { mime_type: mimeType, data: base64ImageData } }] }],
             generationConfig: { responseMimeType: "application/json" }
         };
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
@@ -300,7 +300,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
         const result = await response.json();
         const text = result.candidates[0].content.parts[0].text;
-        return JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
+        const data = JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
+
+        // Automatyczne uzupełnienie dnia tygodnia
+        if(data.Data_Wydarzenia) {
+            const date = new Date(data.Data_Wydarzenia);
+            if(!isNaN(date.getTime())){
+                const dayOfWeek = date.toLocaleDateString('pl-PL', { weekday: 'long' });
+                data.Dzień_Tygodnia = dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1);
+            }
+        }
+        return data;
     }
     
     function findExistingEvent(extractedData) {
@@ -317,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reviewForm.dataset.existingEventId = existingEvent ? existingEvent.ID_Wydarzenia : '';
         reviewTitle.textContent = existingEvent ? "Znaleziono istniejące wydarzenie. Zweryfikuj dane." : "Nowe wydarzenie. Sprawdź wyodrębnione dane.";
         
-        formHeaders.slice(1).forEach(field => {
+        fullFieldList.forEach(field => {
             const extractedValue = extractedData[field] || '';
             const existingValue = existingEvent ? (existingEvent[field] || '') : '';
             
@@ -338,10 +348,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentData = {};
         const formData = new FormData(reviewForm);
         for (let [key, value] of formData.entries()) {
-            currentData[key] = value;
+            if(value) currentData[key] = value;
         }
 
-        const prompt = `Jesteś analitykiem danych eventowych. Na podstawie tych informacji o wydarzeniu, znajdź (symulacja) w internecie brakujące dane i zwróć je jako obiekt JSON. Skup się na polach: Typ_Wydarzenia, Cena_Biletu_Regular, FB_Liczba_Uczestników, FB_Liczba_Zainteresowanych. Dane wejściowe: ${JSON.stringify(currentData)}`;
+        const prompt = `Jesteś analitykiem danych eventowych. Na podstawie tych informacji o wydarzeniu: ${JSON.stringify(currentData)}, przeszukaj internet (symulacja) w poszukiwaniu brakujących danych. Skup się na polach, które są puste. Poszukaj: Cena_Biletu_Regular, Link_do_Wydarzenia_FB, FB_Liczba_Uczestników, FB_Liczba_Zainteresowanych, Styl_Muzyczny. Zwróć tylko te pola, dla których znalazłeś wiarygodne informacje, w formacie JSON.`;
 
         const payload = {
             contents: [{ parts: [{ text: prompt }] }],
@@ -361,8 +371,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (input && !input.value) {
                     input.value = enrichedData[field];
                     input.classList.add('ai-suggested');
-                    const label = input.previousElementSibling;
-                    if(label) label.innerHTML += '<span class="ai-badge">AI</span>';
+                    let label = input.previousElementSibling;
+                    if(label && !label.querySelector('.ai-badge')) {
+                        label.innerHTML += '<span class="ai-badge">✨ AI</span>';
+                    }
                 }
             }
             enrichBtn.style.display = 'none';
@@ -374,6 +386,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function generateNewEventId(data) {
+        const year = new Date(data.Data_Wydarzenia).getFullYear();
+        if (isNaN(year)) return `EVENT_ERROR_DATE`;
+
+        const eventsThisYear = eventData.filter(e => e.Data_Wydarzenia.startsWith(String(year)));
+        const maxId = eventsThisYear.reduce((max, e) => {
+            const idNum = parseInt(e.ID_Wydarzenia.split('-')[1]);
+            return idNum > max ? idNum : max;
+        }, 0);
+        
+        const newIdNum = (maxId + 1).toString().padStart(3, '0');
+        return `${year}-${newIdNum}`;
+    }
 
     async function handleSave() {
         processingText.textContent = "Zapisywanie danych w Arkuszu Google...";
@@ -386,18 +411,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         const existingEventId = reviewForm.dataset.existingEventId;
+        
+        let action;
         if (existingEventId) {
+            action = 'update';
             eventPayload.ID_Wydarzenia = existingEventId;
+        } else {
+            action = 'append';
+            eventPayload.ID_Wydarzenia = generateNewEventId(eventPayload);
         }
 
         try {
             const response = await fetch(appsScriptUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'text/plain' }, // Apps Script requires text/plain
-                body: JSON.stringify({
-                    action: existingEventId ? 'update' : 'append',
-                    data: eventPayload
-                })
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ action: action, data: eventPayload })
             });
             const result = await response.json();
 
