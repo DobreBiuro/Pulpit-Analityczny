@@ -49,7 +49,7 @@
     <div class="container mx-auto p-4 md:p-6 lg:p-8">
         <header class="mb-8">
             <h1 class="text-3xl font-bold text-slate-900">Pulpit Analityczny Konkurencji</h1>
-            <p class="text-slate-600 mt-1">Interaktywna analiza rynku polskich imprez w regionie, wspierana przez AI.</p>
+            <p class="text-slate-600 mt-1">Interaktywna analiza rynku polskich imprez w regionie.</p>
         </header>
         
         <!-- Sekcja Źródła Danych -->
@@ -138,12 +138,10 @@
         <div id="topEventsSection" class="mb-8">
              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
                 <h2 class="text-xl font-bold text-slate-900">Top 5 Najgorętszych Imprez (Prognoza)</h2>
-                <button id="suggestSloganBtn" class="mt-2 sm:mt-0 bg-amber-500 text-white py-2 px-4 rounded-md hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition text-sm font-semibold">✨ Zaproponuj Hasło Reklamowe dla Top 1</button>
             </div>
             <div id="topEventsList" class="grid grid-cols-1 gap-4">
                 <!-- Karty Top 5 będą wstawiane dynamicznie -->
             </div>
-             <div id="sloganContainer" class="mt-4"></div>
         </div>
 
 
@@ -198,10 +196,6 @@
             </div>
             <div id="modalBody" class="p-6">
             </div>
-             <div class="bg-slate-50 px-6 py-4 border-t">
-                 <button id="generateInsightsBtn" class="w-full bg-amber-500 text-white py-2 px-4 rounded-md hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition font-semibold">✨ Generuj Wnioski Strategiczne z Gemini</button>
-                 <div id="geminiInsightsContainer" class="mt-4"></div>
-            </div>
         </div>
     </div>
 
@@ -225,7 +219,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const loadDataBtn = document.getElementById('loadDataBtn');
     const googleSheetUrlInput = document.getElementById('googleSheetUrl');
     const dataStatus = document.getElementById('dataStatus');
-    const suggestSloganBtn = document.getElementById('suggestSloganBtn');
 
     let charts = {};
     let topRankedEvents = [];
@@ -646,107 +639,6 @@ document.addEventListener('DOMContentLoaded', function () {
         charts.engagementVsAttendance.options.scales.y.title = { display: true, text: 'Szacowana Frekwencja' };
         charts.engagementVsAttendance.update();
     }
-    
-    async function handleGenerateInsights(event) {
-        const container = document.getElementById('geminiInsightsContainer');
-        container.innerHTML = `<p class="text-slate-500 animate-pulse">Analizowanie danych i generowanie wniosków przez Gemini...</p>`;
-        
-        let chatHistory = [];
-        const prompt = `Jesteś ekspertem od marketingu eventowego. Na podstawie poniższych danych dotyczących imprezy, napisz zwięzłą analizę strategiczną i podaj 3 konkretne, łatwe do wdrożenia rekomendacje na przyszłość. Odpowiedz w języku polskim.
-
-Dane:
-- Nazwa: ${event.Nazwa_Wydarzenia}
-- Artysta: ${event.Główny_Artysta_Headliner}
-- Frekwencja: ${event.Szacowana_Frekwencja}
-- Feedback gości: "${event.Feedback_Po_Imprezie}"
-- Kluczowe wnioski agenta: "${event.Kluczowe_Wnioski_Agenta}"
-
-Format odpowiedzi:
-**Analiza Strategiczna:** [Twoja analiza]
-**Rekomendacje:**
-1. [Rekomendacja 1]
-2. [Rekomendacja 2]
-3. [Rekomendacja 3]`;
-
-        chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-        const payload = { contents: chatHistory };
-        const apiKey = "";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-             if (!response.ok) {
-                throw new Error(`Błąd sieci: ${response.status} ${response.statusText}`);
-            }
-            const result = await response.json();
-            if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0]) {
-                const text = result.candidates[0].content.parts[0].text;
-                const formattedText = text
-                    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-800">$1</strong>')
-                    .replace(/\n/g, '<br>');
-                container.innerHTML = `<div class="gemini-response">${formattedText}</div>`;
-            } else {
-                throw new Error('Nie otrzymano poprawnej odpowiedzi od API.');
-            }
-        } catch (error) {
-            console.error('Błąd Gemini API:', error);
-            container.innerHTML = `<p class="text-red-500">Wystąpił błąd podczas generowania wniosków. ${error.message}</p>`;
-        }
-    }
-    
-    async function handleSuggestSlogan() {
-        const container = document.getElementById('sloganContainer');
-        if (topRankedEvents.length === 0) {
-            container.innerHTML = `<p class="text-amber-600 text-sm">Brak nadchodzących imprez do wygenerowania haseł.</p>`;
-            return;
-        }
-        
-        container.innerHTML = `<p class="text-slate-500 animate-pulse">Gemini tworzy chwytliwe hasła...</p>`;
-        
-        const topEvent = topRankedEvents[0];
-        let chatHistory = [];
-        const prompt = `Jesteś kreatywnym copywriterem. Wymyśl 5 krótkich, chwytliwych haseł reklamowych na Facebooka i Instagram dla następującej imprezy. Hasła powinny być energiczne, nowoczesne i zachęcające. Odpowiedz w języku polskim, w formie listy.
-
-- Nazwa Imprezy: ${topEvent.Nazwa_Wydarzenia}
-- Główny Artysta: ${topEvent.Główny_Artysta_Headliner}
-- Miasto: ${topEvent.Miasto}
-- Typ: ${topEvent.Typ_Wydarzenia}`;
-        
-        chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-        const payload = { contents: chatHistory };
-        const apiKey = "";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-        
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (!response.ok) {
-                throw new Error(`Błąd sieci: ${response.status} ${response.statusText}`);
-            }
-            const result = await response.json();
-             if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0]) {
-                const text = result.candidates[0].content.parts[0].text;
-                const slogans = text.split('\n').filter(s => s.trim() !== '' && s.length > 5).map(s => `<li>${s.replace(/^[-\*]?\s*/, '')}</li>`).join('');
-                container.innerHTML = `<div class="gemini-response">
-                    <strong class="text-slate-800 block mb-2">Propozycje haseł dla "${topEvent.Nazwa_Wydarzenia}":</strong>
-                    <ul class="list-disc list-inside text-slate-600">${slogans}</ul>
-                </div>`;
-            } else {
-                 throw new Error('Nie otrzymano poprawnej odpowiedzi od API.');
-            }
-        } catch (error) {
-            console.error('Błąd Gemini API:', error);
-            container.innerHTML = `<p class="text-red-500">Wystąpił błąd podczas generowania haseł. ${error.message}</p>`;
-        }
-    }
-
 
     function showModal(event) {
         const modal = document.getElementById('eventModal');
@@ -782,9 +674,6 @@ Format odpowiedzi:
                 ${renderDetail('Kluczowe wnioski agenta', `<span class="italic text-teal-800 bg-teal-50 p-3 rounded-md block">${event.Kluczowe_Wnioski_Agenta}</span>`)}
             </div>
         `;
-        
-        document.getElementById('geminiInsightsContainer').innerHTML = '';
-        document.getElementById('generateInsightsBtn').onclick = () => handleGenerateInsights(event);
 
         modal.classList.remove('hidden');
         modal.classList.add('flex');
@@ -830,8 +719,6 @@ Format odpowiedzi:
             loadDataFromUrl(url);
         }
     });
-    suggestSloganBtn.addEventListener('click', handleSuggestSlogan);
-
 
     initializeCharts();
     processData(fallbackData);
