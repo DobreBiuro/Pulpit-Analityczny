@@ -49,6 +49,33 @@
             background-color: #fefce8; /* yellow-50 */
             border-color: #f59e0b; /* amber-500 */
         }
+        .form-input.ai-suggested {
+            background-color: #f0fdfa; /* teal-50 */
+            border-left: 3px solid #14b8a6;
+        }
+        .copy-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+         .copy-button:hover {
+            background-color: #e2e8f0;
+         }
+         .ai-badge {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #0d9488;
+            background-color: #ccfbf1;
+            padding: 2px 6px;
+            border-radius: 99px;
+            margin-left: 8px;
+         }
     </style>
 </head>
 <body class="text-slate-800">
@@ -59,7 +86,7 @@
             <p class="text-slate-600 mt-1">Przeciągnij plakat, a AI zajmie się resztą.</p>
         </header>
 
-        <!-- Sekcja Konfiguracji API -->
+         <!-- Sekcja Konfiguracji API -->
         <div class="bg-white p-4 rounded-lg shadow-sm mb-8">
             <h2 class="text-lg font-semibold mb-3 text-slate-800">Konfiguracja API Gemini</h2>
             <div id="apiKeyStatus" class="text-sm p-3 rounded-md mb-3"></div>
@@ -71,62 +98,54 @@
             <p class="text-xs text-slate-500 mt-2">Twój klucz jest zapisywany tylko w Twojej przeglądarce i nie jest nigdzie wysyłany. <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-teal-600 underline">Zdobądź klucz API tutaj.</a></p>
         </div>
 
-
-        <!-- Krok 1: Upload -->
+        <!-- Kroki Procesu -->
         <div id="uploadStep" class="bg-white p-8 rounded-lg shadow-sm">
             <div id="dropZone" class="drop-zone flex flex-col items-center justify-center p-10 rounded-lg text-center cursor-pointer">
-                <svg class="w-12 h-12 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h2a4 4 0 014 4v1m-4 5h12m0 0l-4-4m4 4l-4 4"></path></svg>
-                <p class="font-semibold text-slate-700">Przeciągnij i upuść plik z posterem tutaj</p>
-                <p class="text-sm text-slate-500 mt-1">lub</p>
-                <button id="browseBtn" type="button" class="mt-3 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition">
-                    Wybierz plik
-                </button>
+                 <p id="dropZoneText" class="font-semibold text-slate-700">Wczytywanie aktualnej bazy danych...</p>
             </div>
             <input type="file" id="fileInput" class="hidden" accept="image/png, image/jpeg">
         </div>
 
-        <!-- Krok 2: Przetwarzanie -->
         <div id="processingStep" class="hidden bg-white p-8 rounded-lg shadow-sm text-center">
             <div class="spinner mx-auto"></div>
-            <p class="mt-4 font-semibold text-slate-700">Analizuję poster przy użyciu AI...</p>
-            <p class="text-sm text-slate-500">To może zająć chwilę.</p>
+            <p id="processingText" class="mt-4 font-semibold text-slate-700">Analizuję poster przy użyciu AI...</p>
         </div>
         
-        <!-- Krok 3: Weryfikacja -->
         <div id="reviewStep" class="hidden bg-white p-8 rounded-lg shadow-sm">
             <h2 id="reviewTitle" class="text-xl font-bold mb-4"></h2>
-            <form id="reviewForm" class="space-y-4">
-                 <!-- Formularz będzie generowany dynamicznie -->
-            </form>
+            <form id="reviewForm" class="space-y-4"></form>
+            <div id="enrichSection" class="mt-6 border-t pt-6">
+                 <button id="enrichBtn" class="w-full bg-amber-500 text-white py-2 px-4 rounded-md hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition font-semibold">✨ Wzbogać Dane z Internetu (AI)</button>
+            </div>
              <div class="mt-6 flex justify-end gap-3">
                 <button id="cancelBtn" class="bg-slate-200 text-slate-800 py-2 px-4 rounded-md hover:bg-slate-300 transition">Anuluj</button>
-                <button id="saveBtn" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition">Zapisz w Bazie Danych</button>
+                <button id="saveBtn" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition">Generuj Wpis do Bazy</button>
             </div>
         </div>
 
-        <!-- Krok 4: Potwierdzenie -->
-        <div id="confirmationStep" class="hidden bg-white p-8 rounded-lg shadow-sm text-center">
-             <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        <div id="confirmationStep" class="hidden bg-white p-8 rounded-lg shadow-sm">
+            <h2 class="text-xl font-bold mb-4">Sukces! Skopiuj poniższy wiersz CSV.</h2>
+            <p id="confirmationMessage" class="text-slate-600 mb-3"></p>
+            <div class="relative">
+                <textarea id="csvOutput" readonly class="w-full h-24 p-2 font-mono text-sm bg-slate-100 rounded-md border border-slate-300"></textarea>
+                <button id="copyCsvBtn" class="copy-button">Kopiuj</button>
             </div>
-            <h2 class="text-xl font-bold mt-4">Sukces!</h2>
-            <p id="confirmationMessage" class="text-slate-600 mt-2"></p>
+            <p class="text-sm text-slate-500 mt-2">Wklej ten wiersz na końcu swojego Arkusza Google, aby zapisać zmiany.</p>
             <div class="mt-6 flex flex-col sm:flex-row justify-center gap-3">
                  <button id="addAnotherBtn" class="bg-white text-teal-600 border border-teal-600 py-2 px-6 rounded-md hover:bg-teal-50 transition">Dodaj kolejny poster</button>
                  <a href="dashboard.html" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition inline-block">Przejdź do pulpitu analitycznego</a>
             </div>
         </div>
-
     </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     const dropZone = document.getElementById('dropZone');
-    const browseBtn = document.getElementById('browseBtn');
     const fileInput = document.getElementById('fileInput');
     const uploadStep = document.getElementById('uploadStep');
     const processingStep = document.getElementById('processingStep');
+    const processingText = document.getElementById('processingText');
     const reviewStep = document.getElementById('reviewStep');
     const confirmationStep = document.getElementById('confirmationStep');
     const reviewForm = document.getElementById('reviewForm');
@@ -135,18 +154,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelBtn = document.getElementById('cancelBtn');
     const addAnotherBtn = document.getElementById('addAnotherBtn');
     const confirmationMessage = document.getElementById('confirmationMessage');
+    const csvOutput = document.getElementById('csvOutput');
+    const copyCsvBtn = document.getElementById('copyCsvBtn');
     const apiKeyInput = document.getElementById('apiKeyInput');
     const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
     const clearApiKeyBtn = document.getElementById('clearApiKeyBtn');
     const apiKeyStatus = document.getElementById('apiKeyStatus');
-
+    const dropZoneText = document.getElementById('dropZoneText');
+    const enrichBtn = document.getElementById('enrichBtn');
+    
+    const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSV5QtWbQ38EIj6_IwxYAyNyxi29ODr4aC5HFl38z5PmUXMnmBMXxX0m8YcoHPKEHxzQNb0uAwnW9sV/pub?output=csv';
+    let eventData = [];
     let geminiApiKey = '';
-    
-    let eventData = [
-        { ID_Wydarzenia: 'VERZO_20241123', Data_Wydarzenia: '2024-11-23', Nazwa_Wydarzenia: 'Andrzejki z Power Play', Organizator: 'Verzo', Miasto: 'Roosendaal', Kraj: 'NL', Lokalizacja_Venue: 'Klub Verzo', Pojemność_Venue: 600, Typ_Wydarzenia: 'Impreza klubowa', Podtyp_Wydarzenia: 'Koncert live act', Główny_Artysta_Headliner: 'Power Play', Support_DJs_Artyści: 'DJ Matys', Styl_Muzyczny: 'Disco Polo, Dance', Grupa_Docelowa_Target: 'Fani Disco Polo', Cena_Biletu_Early_Bird: 20.00, Cena_Biletu_Regular: 25.00, Cena_Biletu_w_Dniu_Imprezy: 30.00, Promocje_Specjalne: 'Brak', FB_Liczba_Uczestników: 450, FB_Liczba_Zainteresowanych: 1300, Szacowana_Frekwencja: 'Wysoka (75-90%)', Feedback_Po_Imprezie: 'Super energia, świetny koncert.', Konkurencja_w_Tym_Samym_Czasie: 'Brak', Kluczowe_Wnioski_Agenta: 'Koncerty disco polo to pewniak, przyciągają dedykowaną publiczność gotową zapłacić więcej za bilet.' },
-        { ID_Wydarzenia: 'LUNA_20250614', Data_Wydarzenia: '2025-06-14', Nazwa_Wydarzenia: 'Tween Birthday Party', Organizator: 'Klub Luna', Miasto: 'Loosbroek', Kraj: 'NL', Lokalizacja_Venue: 'Klub Luna', Pojemność_Venue: 800, Typ_Wydarzenia: 'Impreza klubowa', Podtyp_Wydarzenia: 'Urodziny rezydenta', Główny_Artysta_Headliner: 'DJ Tween', Support_DJs_Artyści: 'SPLT, TKKN, Marty, Sonic, Abrixsound', Styl_Muzyczny: 'Club, Dance, Hardstyle', Grupa_Docelowa_Target: 'Stali bywalcy, fani mocniejszych brzmień', Cena_Biletu_Early_Bird: 12.50, Cena_Biletu_Regular: 17.50, Cena_Biletu_w_Dniu_Imprezy: 20.00, Promocje_Specjalne: 'Panie wstęp free do 23:00, 100 darmowych drinków', FB_Liczba_Uczestników: 410, FB_Liczba_Zainteresowanych: 1500, Szacowana_Frekwencja: 'Wyprzedane', Feedback_Po_Imprezie: 'Pełen klub, niesamowita energia. Najlepsza impreza od miesięcy.', Konkurencja_w_Tym_Samym_Czasie: 'Brak', Kluczowe_Wnioski_Agenta: 'Połączenie urodzin rezydenta, silnego line-upu i atrakcyjnych promocji to przepis na wyprzedany event.' }
-    ];
-    
+    let formHeaders = [];
+
     function setupApiKey() {
         geminiApiKey = localStorage.getItem('geminiApiKey') || '';
         if (geminiApiKey) {
@@ -159,60 +180,68 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    saveApiKeyBtn.addEventListener('click', () => {
-        const key = apiKeyInput.value.trim();
-        if (key) {
-            localStorage.setItem('geminiApiKey', key);
-            setupApiKey();
-        } else {
-            alert('Proszę wprowadzić klucz API.');
-        }
-    });
+    async function loadEventDatabase() {
+        try {
+            const response = await fetch(GOOGLE_SHEET_CSV_URL);
+            if (!response.ok) throw new Error('Błąd sieci.');
+            const csvText = await response.text();
+            
+            const lines = csvText.trim().split(/\r?\n/);
+            formHeaders = lines[0].split(',').map(h => h.trim());
+            
+            eventData = parseCSV(csvText, formHeaders);
+            
+            dropZone.innerHTML = `
+                <svg class="w-12 h-12 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h2a4 4 0 014 4v1m-4 5h12m0 0l-4-4m4 4l-4 4"></path></svg>
+                <p class="font-semibold text-slate-700">Przeciągnij i upuść plik z posterem tutaj</p>
+                <p class="text-sm text-slate-500 mt-1">lub</p>
+                <button id="browseBtn" type="button" class="mt-3 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Wybierz plik</button>
+            `;
+            document.getElementById('browseBtn').addEventListener('click', () => fileInput.click());
 
-    clearApiKeyBtn.addEventListener('click', () => {
-        localStorage.removeItem('geminiApiKey');
-        apiKeyInput.value = '';
-        setupApiKey();
-    });
+        } catch (error) {
+            console.error(error);
+            dropZoneText.textContent = 'Błąd ładowania bazy danych. Sprawdź link i spróbuj ponownie.';
+            dropZoneText.classList.add('text-red-600');
+        }
+    }
+
+    function parseCSV(csvText, headers) {
+        const lines = csvText.trim().split(/\r?\n/);
+        return lines.slice(1).map(line => {
+            const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            const obj = {};
+            headers.forEach((header, index) => {
+                obj[header] = values[index] ? values[index].trim().replace(/^"|"$/g, '') : '';
+            });
+            return obj;
+        });
+    }
 
     function showStep(step) {
         [uploadStep, processingStep, reviewStep, confirmationStep].forEach(s => s.classList.add('hidden'));
         step.classList.remove('hidden');
     }
 
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('drag-over');
-    });
-    dropZone.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('drag-over');
-    });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); });
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropZone.classList.remove('drag-over');
-        const files = e.dataTransfer.files;
-        if (files.length) {
-            handleFile(files[0]);
-        }
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
     });
-    browseBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', () => {
-        if (fileInput.files.length) {
-            handleFile(fileInput.files[0]);
-        }
-    });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
 
     async function handleFile(file) {
         if (!geminiApiKey) {
-            alert('Proszę najpierw zapisać klucz API Gemini, aby korzystać z tej funkcji.');
+            alert('Proszę najpierw zapisać klucz API Gemini.');
             return;
         }
         if (!file.type.startsWith('image/')) {
             alert('Proszę wybrać plik graficzny.');
             return;
         }
-
+        processingText.textContent = "Analizuję poster przy użyciu AI...";
         showStep(processingStep);
 
         const reader = new FileReader();
@@ -222,13 +251,11 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const extractedData = await extractEventDataFromImage(base64Image, file.type);
                 const existingEvent = findExistingEvent(extractedData);
-                
                 populateReviewForm(extractedData, existingEvent);
                 showStep(reviewStep);
-
             } catch (error) {
                 console.error("Error during AI processing:", error);
-                alert("Wystąpił błąd podczas analizy obrazu. Sprawdź konsolę, aby zobaczyć szczegóły.");
+                alert("Wystąpił błąd podczas analizy obrazu. Spróbuj ponownie.");
                 showStep(uploadStep);
             }
         };
@@ -236,145 +263,129 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function extractEventDataFromImage(base64ImageData, mimeType) {
         const payload = {
-            contents: [
-                {
-                    parts: [
-                        { text: "Jesteś ekspertem od wprowadzania danych, specjalizującym się w plakatach eventowych. Przeanalizuj ten plakat i wyodrębnij informacje do obiektu JSON. Kluczowe pola to: Nazwa_Wydarzenia, Data_Wydarzenia (w formacie YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto. Jeśli brakuje jakiejś informacji, zwróć pusty ciąg znaków." },
-                        { inlineData: { mime_type: mimeType, data: base64ImageData } }
-                    ]
-                }
-            ],
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: "OBJECT",
-                    properties: {
-                        "Nazwa_Wydarzenia": { "type": "STRING" },
-                        "Data_Wydarzenia": { "type": "STRING" },
-                        "Główny_Artysta_Headliner": { "type": "STRING" },
-                        "Support_DJs_Artyści": { "type": "STRING" },
-                        "Lokalizacja_Venue": { "type": "STRING" },
-                        "Miasto": { "type": "STRING" }
-                    },
-                }
-            }
+            contents: [{ parts: [
+                { text: `Jesteś ekspertem od wprowadzania danych z plakatów eventowych. Przeanalizuj plakat i wyodrębnij informacje do obiektu JSON. Pola to: Nazwa_Wydarzenia, Data_Wydarzenia (format YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator. Jeśli czegoś brakuje, zostaw puste pole.` },
+                { inlineData: { mime_type: mimeType, data: base64ImageData } }
+            ] }],
+            generationConfig: { responseMimeType: "application/json" }
         };
-
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-        
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            const errorBody = await response.text();
-            throw new Error(`Błąd API: ${response.statusText}. Treść: ${errorBody}`);
-        }
-
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
         const result = await response.json();
-        if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0] && result.candidates[0].content.parts[0].text) {
-             const parsedJson = JSON.parse(result.candidates[0].content.parts[0].text);
-             if (parsedJson.Data_Wydarzenia) {
-                const dateMatch = parsedJson.Data_Wydarzenia.match(/(\d{1,2})[.\/-](\d{1,2})(?:[.\/-](\d{2,4}))?/);
-                if (dateMatch) {
-                    const day = dateMatch[1].padStart(2, '0');
-                    const month = dateMatch[2].padStart(2, '0');
-                    let year = dateMatch[3];
-                    const currentYear = new Date().getFullYear();
-
-                    if (!year) {
-                        const eventDateThisYear = new Date(`${currentYear}-${month}-${day}`);
-                        const today = new Date();
-                        today.setHours(0,0,0,0);
-                        
-                        if (eventDateThisYear < today) {
-                            year = currentYear + 1;
-                        } else {
-                            year = currentYear;
-                        }
-                    } else if (year.length === 2) {
-                        year = `20${year}`;
-                    }
-                    parsedJson.Data_Wydarzenia = `${year}-${month}-${day}`;
-                }
-            }
-             return parsedJson;
-        } else {
-            throw new Error("Nie udało się wyodrębnić danych z obrazu. Odpowiedź API była niekompletna.");
-        }
+        const text = result.candidates[0].content.parts[0].text;
+        return JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
     }
     
     function findExistingEvent(extractedData) {
         if (!extractedData.Data_Wydarzenia) return null;
         return eventData.find(event => 
             event.Data_Wydarzenia === extractedData.Data_Wydarzenia &&
-            ( (event.Główny_Artysta_Headliner && extractedData.Główny_Artysta_Headliner && event.Główny_Artysta_Headliner.toLowerCase() === extractedData.Główny_Artysta_Headliner.toLowerCase()) ||
-              (event.Nazwa_Wydarzenia && extractedData.Nazwa_Wydarzenia && event.Nazwa_Wydarzenia.toLowerCase() === extractedData.Nazwa_Wydarzenia.toLowerCase()) )
+            ((event.Główny_Artysta_Headliner && extractedData.Główny_Artysta_Headliner && event.Główny_Artysta_Headliner.toLowerCase() === extractedData.Główny_Artysta_Headliner.toLowerCase()) ||
+             (event.Nazwa_Wydarzenia && extractedData.Nazwa_Wydarzenia && event.Nazwa_Wydarzenia.toLowerCase() === extractedData.Nazwa_Wydarzenia.toLowerCase()))
         );
     }
     
     function populateReviewForm(extractedData, existingEvent = null) {
         reviewForm.innerHTML = '';
         reviewForm.dataset.existingEventId = existingEvent ? existingEvent.ID_Wydarzenia : '';
+        reviewTitle.textContent = existingEvent ? "Znaleziono istniejące wydarzenie. Zweryfikuj dane." : "Nowe wydarzenie. Sprawdź wyodrębnione dane.";
         
-        if (existingEvent) {
-            reviewTitle.textContent = "Znaleziono istniejące wydarzenie. Zweryfikuj dane.";
-        } else {
-            reviewTitle.textContent = "Nowe wydarzenie. Sprawdź wyodrębnione dane.";
-        }
-        
-        const fields = ["Nazwa_Wydarzenia", "Data_Wydarzenia", "Główny_Artysta_Headliner", "Support_DJs_Artyści", "Lokalizacja_Venue", "Miasto"];
-        
-        fields.forEach(field => {
+        formHeaders.slice(1).forEach(field => {
             const extractedValue = extractedData[field] || '';
             const existingValue = existingEvent ? (existingEvent[field] || '') : '';
-            const isUpdated = existingEvent && extractedValue && (extractedValue.toLowerCase() !== existingValue.toLowerCase());
-
+            
             const fieldDiv = document.createElement('div');
             fieldDiv.innerHTML = `
                 <label for="${field}" class="block text-sm font-medium text-slate-700">${field.replace(/_/g, ' ')}</label>
-                <input type="text" id="${field}" name="${field}" value="${extractedValue || existingValue}" class="form-input mt-1 ${isUpdated ? 'updated' : ''}">
-                ${isUpdated ? `<p class="text-xs text-amber-600 mt-1">Zaktualizowano z: "${existingValue}"</p>` : ''}
+                <input type="text" id="${field}" name="${field}" value="${extractedValue || existingValue}" class="form-input mt-1" placeholder="Brak danych...">
             `;
             reviewForm.appendChild(fieldDiv);
         });
+        enrichBtn.style.display = 'block';
     }
+
+    async function handleEnrichData() {
+        processingText.textContent = "Wzbogacam dane, szukam informacji online...";
+        showStep(processingStep);
+
+        const currentData = {};
+        const formData = new FormData(reviewForm);
+        for (let [key, value] of formData.entries()) {
+            currentData[key] = value;
+        }
+
+        const prompt = `Jesteś analitykiem danych eventowych. Na podstawie tych informacji o wydarzeniu, znajdź (symulacja) w internecie brakujące dane i zwróć je jako obiekt JSON. Skup się na polach: Typ_Wydarzenia, Cena_Biletu_Regular, FB_Liczba_Uczestników, FB_Liczba_Zainteresowanych. Dane wejściowe: ${JSON.stringify(currentData)}`;
+
+        const payload = {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json" }
+        };
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+
+        try {
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+            const result = await response.json();
+            const enrichedText = result.candidates[0].content.parts[0].text;
+            const enrichedData = JSON.parse(enrichedText.replace(/```json\n?/, '').replace(/```$/, ''));
+
+            for (const field in enrichedData) {
+                const input = reviewForm.querySelector(`[name="${field}"]`);
+                if (input && !input.value) {
+                    input.value = enrichedData[field];
+                    input.classList.add('ai-suggested');
+                    const label = input.previousElementSibling;
+                    if(label) label.innerHTML += '<span class="ai-badge">AI</span>';
+                }
+            }
+            enrichBtn.style.display = 'none';
+            showStep(reviewStep);
+        } catch(error) {
+            console.error("Błąd podczas wzbogacania danych:", error);
+            alert("Nie udało się wzbogacić danych. Sprawdź konsolę.");
+            showStep(reviewStep);
+        }
+    }
+
 
     function handleSave() {
         const formData = new FormData(reviewForm);
-        const updatedData = {};
+        const existingEventId = reviewForm.dataset.existingEventId;
+        
+        let csvRow = [];
         let changes = [];
         
-        for (let [key, value] of formData.entries()) {
-            updatedData[key] = value;
-        }
-
-        const existingEventId = reviewForm.dataset.existingEventId;
         if (existingEventId) {
             const eventIndex = eventData.findIndex(e => e.ID_Wydarzenia === existingEventId);
-            if (eventIndex > -1) {
-                 for(const key in updatedData) {
-                    if (eventData[eventIndex][key] !== updatedData[key] && updatedData[key]) {
-                        changes.push(`pole "${key.replace(/_/g, ' ')}" zaktualizowano na "${updatedData[key]}"`);
-                        eventData[eventIndex][key] = updatedData[key];
-                    }
-                 }
-                 if (changes.length > 0) {
-                     confirmationMessage.textContent = `Pomyślnie zaktualizowano wydarzenie "${eventData[eventIndex].Nazwa_Wydarzenia}". Zmiany: ${changes.join(', ')}.`;
-                 } else {
-                      confirmationMessage.textContent = `Wszystkie dane dla wydarzenia "${eventData[eventIndex].Nazwa_Wydarzenia}" były już aktualne.`;
-                 }
+            const originalEvent = eventData[eventIndex];
+            
+            formHeaders.forEach(header => {
+                const newValue = formData.get(header) || originalEvent[header] || '';
+                if(header !== 'ID_Wydarzenia' && originalEvent[header] !== newValue) {
+                     changes.push(`pole "${header.replace(/_/g, ' ')}"`);
+                }
+                csvRow.push(`"${String(newValue).replace(/"/g, '""')}"`);
+            });
+
+            if (changes.length > 0) {
+                confirmationMessage.textContent = `Wygenerowano zaktualizowany wpis dla wydarzenia "${originalEvent.Nazwa_Wydarzenia}". Zmienione pola: ${changes.join(', ')}.`;
+            } else {
+                confirmationMessage.textContent = `Wygenerowano wpis dla wydarzenia "${originalEvent.Nazwa_Wydarzenia}". Dane były aktualne.`;
             }
+
         } else {
-            const newEventId = `${(updatedData.Nazwa_Wydarzenia || 'EVENT').substring(0,4).toUpperCase().replace(/\s/g,'')}_${(updatedData.Data_Wydarzenia || 'NODATE').replace(/-/g,'')}`;
-            const newEvent = { ID_Wydarzenia: newEventId, ...updatedData };
-            eventData.push(newEvent);
-            confirmationMessage.textContent = `Pomyślnie dodano nowe wydarzenie "${newEvent.Nazwa_Wydarzenia}" do bazy danych.`;
+             const newEvent = {};
+             formHeaders.forEach(header => {
+                 newEvent[header] = formData.get(header) || '';
+             });
+             newEvent.ID_Wydarzenia = `${(newEvent.Organizator || 'EVENT').substring(0,4).toUpperCase().replace(/\s/g,'')}_${(newEvent.Data_Wydarzenia || 'NODATE').replace(/-/g,'')}`;
+             
+             csvRow = formHeaders.map(header => `"${(newEvent[header] || '').replace(/"/g, '""')}"`);
+             confirmationMessage.textContent = `Wygenerowano wpis dla nowego wydarzenia "${newEvent.Nazwa_Wydarzenia}".`;
         }
         
-        console.log("Zaktualizowana baza danych (symulacja zapisu):", JSON.stringify(eventData, null, 2));
+        csvOutput.value = csvRow.join(',');
         showStep(confirmationStep);
     }
     
@@ -384,13 +395,21 @@ document.addEventListener('DOMContentLoaded', () => {
         reviewForm.dataset.existingEventId = '';
         showStep(uploadStep);
     }
+
+    copyCsvBtn.addEventListener('click', () => {
+        csvOutput.select();
+        document.execCommand('copy');
+        copyCsvBtn.textContent = 'Skopiowano!';
+        setTimeout(() => { copyCsvBtn.textContent = 'Kopiuj'; }, 2000);
+    });
     
     saveBtn.addEventListener('click', handleSave);
     cancelBtn.addEventListener('click', resetImporter);
     addAnotherBtn.addEventListener('click', resetImporter);
+    enrichBtn.addEventListener('click', handleEnrichData);
     
     setupApiKey();
-
+    loadEventDatabase();
 });
 </script>
 
