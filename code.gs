@@ -1,16 +1,49 @@
-// Ta funkcja jest wywoływana, gdy aplikacja frontendowa wysyła żądanie POST. To kod do Google Script App.
+// Zdefiniuj tutaj listę autoryzowanych adresów e-mail.
+const AUTHORIZED_USERS = ['mrcn85@gmail.com', 'Piotr.clubluna@gmail.com', 'darekzaga@gmail.com', 'Management.lunanl@gmail.com']; 
+const CLIENT_ID = '224351474213-rsi2j2r328adm26bi6rsp8476bopsg3s.apps.googleusercontent.com';
+
+function validateToken(token) {
+  try {
+    const response = UrlFetchApp.fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
+    const payload = JSON.parse(response.getContentText());
+
+    if (payload.aud !== CLIENT_ID) {
+      throw new Error("Token ma nieprawidłowego odbiorcę (audience).");
+    }
+    
+    if (!payload.email_verified) {
+      throw new Error("Email użytkownika nie jest zweryfikowany.");
+    }
+
+    if (!AUTHORIZED_USERS.includes(payload.email)) {
+      throw new Error(`Użytkownik ${payload.email} nie jest autoryzowany do wykonywania tej operacji.`);
+    }
+    
+    return { email: payload.email }; // Zwraca obiekt użytkownika w przypadku sukcesu
+  } catch (e) {
+    Logger.log(`Błąd walidacji tokenu: ${e.toString()}`);
+    return null; // Zwraca null w przypadku błędu
+  }
+}
+
 function doPost(e) {
   try {
-    const sheetName = "database";
+    const request = JSON.parse(e.postData.contents);
+    const idToken = request.token;
+    
+    const user = validateToken(idToken);
+    if (!user) {
+      throw new Error("Autoryzacja nie powiodła się. Nieprawidłowy token lub brak uprawnień.");
+    }
+
+    const sheetName = "Baza Danych";
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
     
-    // Kluczowy krok: Sprawdzenie, czy arkusz o podanej nazwie istnieje.
     if (!sheet) {
-      throw new Error(`Nie można znaleźć arkusza o nazwie "${sheetName}". Upewnij się, że nazwa zakładki w Arkuszu Google jest poprawna.`);
+      throw new Error(`Nie można znaleźć arkusza o nazwie "${sheetName}".`);
     }
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const request = JSON.parse(e.postData.contents);
     const action = request.action;
     const data = request.data;
     
@@ -20,16 +53,14 @@ function doPost(e) {
       const idToUpdate = data.ID_Wydarzenia;
       const idColumnIndex = headers.indexOf('ID_Wydarzenia') + 1;
       
-      if (idColumnIndex === 0) {
-        throw new Error("Nie znaleziono kolumny 'ID_Wydarzenia' w arkuszu.");
-      }
+      if (idColumnIndex === 0) throw new Error("Nie znaleziono kolumny 'ID_Wydarzenia'.");
 
       const idColumnValues = sheet.getRange(2, idColumnIndex, sheet.getLastRow(), 1).getValues();
       let rowIndexToUpdate = -1;
       
       for (let i = 0; i < idColumnValues.length; i++) {
         if (idColumnValues[i][0] == idToUpdate) {
-          rowIndexToUpdate = i + 2; // +2 bo index jest od 0, a wiersze od 1 + nagłówek
+          rowIndexToUpdate = i + 2;
           break;
         }
       }
