@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById(`status-${processedCount}`).textContent = 'Gotowe';
                     document.getElementById(`status-${processedCount}`).className = 'text-sm ml-auto text-green-600';
 
-                    await loadEventDatabase(); // Odśwież bazę danych po każdej operacji
+                    await loadEventDatabase();
                 } else {
                     throw new Error(result.message);
                 }
@@ -420,9 +420,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const prompt = `Jesteś super-asystentem analityka danych eventowych. Twoim zadaniem jest przeanalizowanie poniższego plakatu i uzupełnienie JAK NAJWIĘKSZEJ liczby pól w formacie JSON. Nazwa pliku to "${fileName}".
         Kroki analizy:
         1.  **Odczytaj dane z plakatu (OCR):** Odczytaj podstawowe dane takie jak Nazwa_Wydarzenia, Data_Wydarzenia (format<y_bin_564>-MM-DD, jeśli nie ma roku, użyj 0000), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator.
-        2.  **Wzbogać dane (WNIOSKOWANIE I WIEDZA ZEWNĘTRZNA):** Na podstawie odczytanych informacji, uzupełnij puste pola:
+        2.  **Wzbogać dane (WNIOSKOWANIE I WIEDZA ZEWNĘTRZNA):** Na podstawie odczytanych informacji, uzupełnij puste pola w tak wielu kolumnach bazy danych jak możesz:
             * **Styl_Muzyczny**: Jaki styl muzyczny gra Główny_Artysta_Headliner?
-            * **Pojemność_Venue**: Poszukaj w internecie (symulacja) jaka jest typowa pojemność dla 'Lokalizacja_Venue' w 'Miasto'. Podaj jako liczbę.
+            * **Pojemność_Venue**: Poszukaj w internecie (symulacja) jaka jest typowa pojemność dla 'Lokalizacja_Venue' w 'Miasto'. Poszukaj po adresie albo nazwie firmy. Podaj jako liczbę.
             * **Cena_Biletu_Regular**: Poszukaj ceny na plakacie lub zasugeruj typową cenę dla tego typu wydarzenia.
         ZWRÓĆ JEDEN kompletny obiekt JSON. Jeśli informacji brakuje, pole ma być puste.`;
         
@@ -509,26 +509,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function generateNewEventId(data) {
-        const year = new Date(data.Data_Wydarzenia).getFullYear();
-        if (isNaN(year)) return `EVENT_ERROR_DATE`;
-
-        const eventsThisYear = eventData.filter(e => e.ID_Wydarzenia && e.ID_Wydarzenia.startsWith(String(year)));
+        const year = new Date().getFullYear();
+        const prefix = `${year}-`;
+        const eventsThisYear = eventData.filter(e => e.ID_Wydarzenia && e.ID_Wydarzenia.startsWith(prefix));
         const maxId = eventsThisYear.reduce((max, e) => {
-            if(!e.ID_Wydarzenia.includes('-')) return max;
             const idNum = parseInt(e.ID_Wydarzenia.split('-')[1], 10);
             return idNum > max ? idNum : max;
         }, 0);
         
         const newIdNum = (maxId + 1).toString().padStart(3, '0');
-        return `${year}-${newIdNum}`;
+        return `${prefix}${newIdNum}`;
     }
 
     async function saveToDatabase(eventPayload, action) {
-        if (action === 'update') {
+        if (action === 'append') {
+            eventPayload.ID_Wydarzenia = generateNewEventId(eventPayload);
+        } else {
             const existing = findExistingEvent(eventPayload);
             eventPayload.ID_Wydarzenia = existing.ID_Wydarzenia;
-        } else {
-            eventPayload.ID_Wydarzenia = generateNewEventId(eventPayload);
         }
         
         eventPayload.Agent_Wprowadzający = "AI-OCR";
