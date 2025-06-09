@@ -45,10 +45,6 @@
             border-color: #14b8a6;
             box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.3);
         }
-        .ai-badge {
-            font-size: 0.75rem;
-            margin-left: 8px;
-         }
     </style>
 </head>
 <body class="text-slate-800">
@@ -250,23 +246,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
+        processingText.textContent = "Analizuję dane...";
         showStep(processingStep);
-        processingText.textContent = "Krok 1/2: Analizuję poster...";
 
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = async () => {
             const base64Image = reader.result.split(',')[1];
             try {
-                const ocrData = await extractInitialData(base64Image, file.type);
-                
-                processingText.textContent = "Krok 2/2: Wzbogacam dane z internetu...";
-                const enrichedData = await enrichDataOnline(ocrData);
-
-                const finalData = { ...ocrData, ...enrichedData };
-
+                const finalData = await getAiAnalysis(base64Image, file.type);
                 const existingEvent = findExistingEvent(finalData);
-                populateReviewForm(finalData, existingEvent, ocrData, enrichedData);
+                populateReviewForm(finalData, existingEvent);
                 showStep(reviewStep);
             } catch (error) {
                 console.error("Error during AI processing:", error);
@@ -276,8 +266,21 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    async function extractInitialData(base64ImageData, mimeType) {
-        const prompt = `Jesteś ekspertem od wprowadzania danych z plakatów eventowych. Przeanalizuj plakat i wyodrębnij informacje do obiektu JSON. Pola to: Nazwa_Wydarzenia, Data_Wydarzenia (format YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator (szukaj nazwy firmy, logo, URL, social media handle). Jeśli brakuje jakiejś informacji, zostaw puste pole.`;
+    async function getAiAnalysis(base64ImageData, mimeType) {
+        const prompt = `Jesteś super-asystentem analityka danych eventowych. Twoim zadaniem jest przeanalizowanie poniższego plakatu i uzupełnienie JAK NAJWIĘKSZEJ liczby pól w formacie JSON.
+
+Kroki analizy:
+1.  **Odczytaj dane z plakatu (OCR):** Odczytaj podstawowe dane takie jak Nazwa_Wydarzenia, Data_Wydarzenia (w formacie YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator. Szukaj nazwy organizatora w stopkach, logotypach i adresach www.
+2.  **Wnioskuj na podstawie danych:**
+    * Na podstawie odczytanej daty, uzupełnij pole Dzień_Tygodnia (po polsku, np. 'Sobota').
+    * Na podstawie odczytanego miasta, uzupełnij pole Region_Obszar (np. dla "Loosbroek" wpisz "Brabancja Północna").
+3.  **Wzbogać dane (symulacja wyszukiwania online):** Na podstawie nazwy artysty i wydarzenia, znajdź i uzupełnij pola: Styl_Muzyczny (np. 'Dance, Club'), Cena_Biletu_Regular (jako liczba).
+4.  **Uzupełnij meta-dane:**
+    * Ustaw pole Agent_Wprowadzający na "AI-OCR".
+    * Oceń kompletność danych i ustaw Status_Rekordu na "Kompletny" lub "Do weryfikacji".
+
+Zwróć JEDEN kompletny obiekt JSON z wszystkimi polami, których oczekuje baza danych, zgodnie z tą listą: ${formHeaders.slice(1).join(', ')}. Jeśli jakiejś informacji absolutnie nie da się znaleźć, pozostaw pole puste.`;
+        
         const payload = {
             contents: [{ parts: [{ text: prompt }, { inlineData: { mime_type: mimeType, data: base64ImageData } }] }],
             generationConfig: { responseMimeType: "application/json" }
@@ -289,47 +292,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = result.candidates[0].content.parts[0].text;
         return JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
     }
-
-    async function enrichDataOnline(initialData) {
-        const prompt = `Jesteś analitykiem danych eventowych. Na podstawie tych informacji o wydarzeniu: ${JSON.stringify(initialData)}, przeszukaj internet (symulacja), aby uzupełnić PUSTE pola. Twoim zadaniem jest znalezienie i zwrócenie jako JSON następujących informacji: Region_Obszar (na podstawie miasta), Styl_Muzyczny (na podstawie artysty), Cena_Biletu_Regular, Link_do_Wydarzenia_FB. Zwróć tylko te pola, dla których znalazłeś wiarygodne informacje.`;
-        const payload = {
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: "application/json" }
-        };
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        if (!response.ok) throw new Error(`API Error during enrichment: ${response.statusText}`);
-        const result = await response.json();
-        const text = result.candidates[0].content.parts[0].text;
-        return JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
-    }
-
-    function findExistingEvent(data) {
-        if (!data.Data_Wydarzenia) return null;
+    
+    function findExistingEvent(extractedData) {
+        if (!extractedData.Data_Wydarzenia) return null;
         return eventData.find(event => 
-            event.Data_Wydarzenia === data.Data_Wydarzenia &&
-            ((event.Główny_Artysta_Headliner && data.Główny_Artysta_Headliner && event.Główny_Artysta_Headliner.toLowerCase() === data.Główny_Artysta_Headliner.toLowerCase()) ||
-             (event.Nazwa_Wydarzenia && data.Nazwa_Wydarzenia && event.Nazwa_Wydarzenia.toLowerCase() === data.Nazwa_Wydarzenia.toLowerCase()))
+            event.Data_Wydarzenia === extractedData.Data_Wydarzenia &&
+            ((event.Główny_Artysta_Headliner && extractedData.Główny_Artysta_Headliner && event.Główny_Artysta_Headliner.toLowerCase() === extractedData.Główny_Artysta_Headliner.toLowerCase()) ||
+             (event.Nazwa_Wydarzenia && extractedData.Nazwa_Wydarzenia && event.Nazwa_Wydarzenia.toLowerCase() === extractedData.Nazwa_Wydarzenia.toLowerCase()))
         );
     }
     
-    function populateReviewForm(finalData, existingEvent, ocrData, enrichedData) {
+    function populateReviewForm(finalData, existingEvent) {
         reviewForm.innerHTML = '';
         reviewForm.dataset.existingEventId = existingEvent ? existingEvent.ID_Wydarzenia : '';
         reviewTitle.textContent = existingEvent ? "Znaleziono istniejące wydarzenie. Zweryfikuj dane." : "Nowe wydarzenie. Sprawdź wyodrębnione dane.";
         
-        fullFieldList.forEach(field => {
-            const existingValue = existingEvent ? (existingEvent[field] || '') : '';
-            const finalValue = finalData[field] || existingValue;
+        formHeaders.slice(1).forEach(field => {
+            const finalValue = (existingEvent && existingEvent[field]) ? existingEvent[field] : (finalData[field] || '');
+            const isAiSuggested = !existingEvent && finalData[field];
 
             const fieldDiv = document.createElement('div');
-            let badge = '';
-            if (enrichedData[field] && !ocrData[field]) {
-                badge = '<span class="ai-badge">🌐 AI (Internet)</span>';
-            } else if (ocrData[field]) {
-                 badge = '<span class="ai-badge">🖼️ AI (Poster)</span>';
-            }
-
+            let badge = isAiSuggested ? '<span class="ai-badge">✨ AI</span>' : '';
+            
             fieldDiv.innerHTML = `
                 <label for="${field}" class="flex items-center text-sm font-medium text-slate-700">${field.replace(/_/g, ' ')} ${badge}</label>
                 <input type="text" id="${field}" name="${field}" value="${finalValue}" class="form-input mt-1" placeholder="Brak danych...">
@@ -342,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const year = new Date(data.Data_Wydarzenia).getFullYear();
         if (isNaN(year)) return `EVENT_ERROR_DATE`;
 
-        const eventsThisYear = eventData.filter(e => e.ID_Wydarzenia.startsWith(String(year)));
+        const eventsThisYear = eventData.filter(e => e.ID_Wydarzenia && e.ID_Wydarzenia.startsWith(String(year)));
         const maxId = eventsThisYear.reduce((max, e) => {
             const idNum = parseInt(e.ID_Wydarzenia.split('-')[1], 10);
             return idNum > max ? idNum : max;
@@ -372,11 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
             action = 'append';
             eventPayload.ID_Wydarzenia = generateNewEventId(eventPayload);
         }
-
-        // Auto-uzupełnienie meta danych
-        eventPayload.Agent_Wprowadzający = "AI-OCR";
-        const isComplete = Object.values(eventPayload).every(val => val !== '');
-        eventPayload.Status_Rekordu = isComplete ? "Kompletny" : "Do weryfikacji";
+        
         eventPayload.Data_Ostatniej_Aktualizacji = new Date().toISOString().slice(0, 10);
 
         try {
