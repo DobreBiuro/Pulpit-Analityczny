@@ -30,17 +30,17 @@
         .modal-content {
             transition: transform 0.25s ease;
         }
-        .gemini-response {
-            background-color: #f0fdfa; /* teal-50 */
-            border-left: 4px solid #14b8a6; /* teal-500 */
-            padding: 1rem;
-            margin-top: 1rem;
-            border-radius: 0.25rem;
-            animation: fadeIn 0.5s ease-in-out;
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #0d9488; /* teal-600 */
+            animation: spin 1s ease infinite;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -51,138 +51,124 @@
             <h1 class="text-3xl font-bold text-slate-900">Pulpit Analityczny Konkurencji</h1>
             <p class="text-slate-600 mt-1">Interaktywna analiza rynku polskich imprez w regionie.</p>
         </header>
+
+        <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-75 z-50 flex flex-col items-center justify-center">
+            <div class="spinner"></div>
+            <p class="mt-4 font-semibold text-slate-700">Wczytywanie danych z magazynu...</p>
+        </div>
         
-        <!-- Sekcja Źródła Danych -->
-        <div class="bg-white p-4 rounded-lg shadow-sm mb-8">
-            <h2 class="text-lg font-semibold mb-3 text-slate-800">Źródło Danych</h2>
-             <p id="dataStatus" class="text-sm text-slate-500">Ładowanie danych...</p>
-             <details class="mt-2 text-sm">
-                 <summary class="cursor-pointer text-teal-600 hover:text-teal-800 font-medium">Załaduj dane manualnie</summary>
-                 <div class="mt-2 p-3 bg-slate-50 rounded-md">
-                    <p class="text-slate-600 mb-2">
-                        Wklej publiczny link CSV z Arkuszy Google, aby ręcznie zaktualizować dane na pulpicie.
-                    </p>
-                    <div class="flex flex-col sm:flex-row gap-2">
-                        <input type="text" id="googleSheetUrl" placeholder="Wklej publiczny link CSV z Arkuszy Google..." class="flex-grow block w-full px-3 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md">
-                        <button id="loadDataBtn" class="bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition sm:w-auto w-full">Wczytaj</button>
+        <div id="mainContent" class="hidden">
+             <!-- Sekcja Źródła Danych -->
+            <div class="bg-white p-4 rounded-lg shadow-sm mb-8">
+                <div id="dataStatus" class="text-sm"></div>
+                <details class="mt-2 text-sm">
+                    <summary class="cursor-pointer text-teal-600 hover:text-teal-800 font-medium">Załaduj dane manualnie z innego źródła</summary>
+                    <div class="mt-2 pt-4 border-t">
+                        <p class="text-slate-600 mb-2">
+                            Wklej publiczny link CSV z Arkuszy Google, aby ręcznie zaktualizować dane na pulpicie.
+                        </p>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <input type="text" id="googleSheetUrl" placeholder="Wklej publiczny link CSV..." class="flex-grow block w-full px-3 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md">
+                            <button id="loadDataBtn" class="bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition sm:w-auto w-full">Wczytaj</button>
+                        </div>
                     </div>
-                 </div>
-             </details>
-        </div>
+                </details>
+            </div>
 
+            <!-- Sekcja Filtrow -->
+            <div class="bg-white p-4 rounded-lg shadow-sm mb-8">
+                <h2 class="text-lg font-semibold mb-3 text-slate-800">Filtry</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div>
+                        <label for="dateRangeFilter" class="block text-sm font-medium text-slate-700">Zakres czasu</label>
+                        <select id="dateRangeFilter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md">
+                            <option value="all">Wszystkie</option>
+                            <optgroup label="Przyszłość">
+                                <option value="next_month">Następny miesiąc</option>
+                                <option value="next_6_months">Następne 6 miesięcy</option>
+                                <option value="next_year">Następny rok</option>
+                            </optgroup>
+                            <optgroup label="Przeszłość">
+                                <option value="last_month">Ostatni miesiąc</option>
+                                <option value="last_quarter">Ostatni kwartał</option>
+                                <option value="last_6_months">Ostatnie 6 miesięcy</option>
+                                <option value="last_year">Ostatni rok</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="organizerFilter" class="block text-sm font-medium text-slate-700">Organizator</label>
+                        <select id="organizerFilter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md"></select>
+                    </div>
+                    <div>
+                        <label for="cityFilter" class="block text-sm font-medium text-slate-700">Miasto</label>
+                        <select id="cityFilter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md"></select>
+                    </div>
+                    <div>
+                        <label for="countryFilter" class="block text-sm font-medium text-slate-700">Kraj</label>
+                        <select id="countryFilter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md"></select>
+                    </div>
+                    <div>
+                        <label for="eventTypeFilter" class="block text-sm font-medium text-slate-700">Typ imprezy</label>
+                        <select id="eventTypeFilter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md"></select>
+                    </div>
+                    <div class="flex items-end">
+                         <button id="resetFilters" class="w-full bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition">Resetuj</button>
+                    </div>
+                </div>
+            </div>
 
-        <!-- Sekcja Filtrow -->
-        <div class="bg-white p-4 rounded-lg shadow-sm mb-8">
-            <h2 class="text-lg font-semibold mb-3 text-slate-800">Filtry</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div>
-                    <label for="dateRangeFilter" class="block text-sm font-medium text-slate-700">Zakres czasu</label>
-                    <select id="dateRangeFilter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md">
-                        <option value="all">Wszystkie</option>
-                        <optgroup label="Przyszłość">
-                            <option value="next_month">Następny miesiąc</option>
-                            <option value="next_6_months">Następne 6 miesięcy</option>
-                            <option value="next_year">Następny rok</option>
-                        </optgroup>
-                        <optgroup label="Przeszłość">
-                            <option value="last_month">Ostatni miesiąc</option>
-                            <option value="last_quarter">Ostatni kwartał</option>
-                            <option value="last_6_months">Ostatnie 6 miesięcy</option>
-                            <option value="last_year">Ostatni rok</option>
-                        </optgroup>
-                    </select>
+            <!-- Sekcja KPI -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-5 rounded-lg shadow-sm">
+                    <h3 class="text-sm font-medium text-slate-500">Łączna liczba imprez</h3>
+                    <p id="kpiTotalEvents" class="mt-1 text-3xl font-semibold text-slate-900">0</p>
                 </div>
-                <div>
-                    <label for="organizerFilter" class="block text-sm font-medium text-slate-700">Organizator</label>
-                    <select id="organizerFilter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md"></select>
+                <div class="bg-white p-5 rounded-lg shadow-sm">
+                    <h3 class="text-sm font-medium text-slate-500">Średnia cena biletu</h3>
+                    <p id="kpiAvgPrice" class="mt-1 text-3xl font-semibold text-slate-900">0.00 €</p>
                 </div>
-                <div>
-                    <label for="cityFilter" class="block text-sm font-medium text-slate-700">Miasto</label>
-                    <select id="cityFilter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md"></select>
+                <div class="bg-white p-5 rounded-lg shadow-sm">
+                    <h3 class="text-sm font-medium text-slate-500">Najaktywniejszy organizator</h3>
+                    <p id="kpiTopOrganizer" class="mt-1 text-3xl font-semibold text-slate-900">-</p>
                 </div>
-                <div>
-                    <label for="countryFilter" class="block text-sm font-medium text-slate-700">Kraj</label>
-                    <select id="countryFilter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md"></select>
-                </div>
-                <div>
-                    <label for="eventTypeFilter" class="block text-sm font-medium text-slate-700">Typ imprezy</label>
-                    <select id="eventTypeFilter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md"></select>
-                </div>
-                <div class="flex items-end">
-                     <button id="resetFilters" class="w-full bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition">Resetuj</button>
+                <div class="bg-white p-5 rounded-lg shadow-sm">
+                    <h3 class="text-sm font-medium text-slate-500">Najpopularniejsze miasto</h3>
+                    <p id="kpiTopCity" class="mt-1 text-3xl font-semibold text-slate-900">-</p>
                 </div>
             </div>
-        </div>
-
-        <!-- Sekcja KPI -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white p-5 rounded-lg shadow-sm">
-                <h3 class="text-sm font-medium text-slate-500">Łączna liczba imprez</h3>
-                <p id="kpiTotalEvents" class="mt-1 text-3xl font-semibold text-slate-900">0</p>
+            
+            <!-- Sekcja Wykresów -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white p-4 rounded-lg shadow-sm">
+                    <h3 class="font-semibold text-slate-800 mb-3">Liczba imprez w czasie</h3>
+                    <div class="chart-container"><canvas id="eventsOverTimeChart"></canvas></div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm">
+                    <h3 class="font-semibold text-slate-800 mb-3">Udział w rynku wg Organizatora</h3>
+                    <div class="chart-container"><canvas id="organizerMarketShareChart"></canvas></div>
+                </div>
             </div>
-            <div class="bg-white p-5 rounded-lg shadow-sm">
-                <h3 class="text-sm font-medium text-slate-500">Średnia cena biletu</h3>
-                <p id="kpiAvgPrice" class="mt-1 text-3xl font-semibold text-slate-900">0.00 €</p>
-            </div>
-            <div class="bg-white p-5 rounded-lg shadow-sm">
-                <h3 class="text-sm font-medium text-slate-500">Najaktywniejszy organizator</h3>
-                <p id="kpiTopOrganizer" class="mt-1 text-3xl font-semibold text-slate-900">-</p>
-            </div>
-            <div class="bg-white p-5 rounded-lg shadow-sm">
-                <h3 class="text-sm font-medium text-slate-500">Najpopularniejsze miasto</h3>
-                <p id="kpiTopCity" class="mt-1 text-3xl font-semibold text-slate-900">-</p>
-            </div>
-        </div>
-        
-        <!-- Sekcja Top 5 -->
-        <div id="topEventsSection" class="mb-8">
-             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-                <h2 class="text-xl font-bold text-slate-900">Top 5 Najgorętszych Imprez (Prognoza)</h2>
-            </div>
-            <div id="topEventsList" class="grid grid-cols-1 gap-4">
-                <!-- Karty Top 5 będą wstawiane dynamicznie -->
-            </div>
-        </div>
-
-
-        <!-- Sekcja Wykresów -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div class="bg-white p-4 rounded-lg shadow-sm">
-                <h3 class="font-semibold text-slate-800 mb-3">Liczba imprez w czasie</h3>
-                <div class="chart-container"><canvas id="eventsOverTimeChart"></canvas></div>
-            </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm">
-                <h3 class="font-semibold text-slate-800 mb-3">Udział w rynku wg Organizatora</h3>
-                <div class="chart-container"><canvas id="organizerMarketShareChart"></canvas></div>
-            </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm">
-                <h3 class="font-semibold text-slate-800 mb-3">Średnia cena biletu wg typu imprezy</h3>
-                <div class="chart-container"><canvas id="priceByEventTypeChart"></canvas></div>
-            </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm">
-                <h3 class="font-semibold text-slate-800 mb-3">Zaangażowanie FB vs Frekwencja</h3>
-                 <div class="chart-container"><canvas id="engagementVsAttendanceChart"></canvas></div>
-            </div>
-        </div>
-        
-        <!-- Sekcja Tabeli -->
-        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-            <h3 class="font-semibold text-slate-800 p-4">Szczegółowa lista wydarzeń</h3>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200">
-                    <thead class="bg-slate-50">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Data</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nazwa Wydarzenia</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Organizator</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Miasto</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Cena (Regular)</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Szczegóły</th>
-                        </tr>
-                    </thead>
-                    <tbody id="eventsTableBody" class="bg-white divide-y divide-slate-200">
-                    </tbody>
-                </table>
+            
+            <!-- Sekcja Tabeli -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                <h3 class="font-semibold text-slate-800 p-4">Szczegółowa lista wydarzeń</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Data</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nazwa Wydarzenia</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Organizator</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Miasto</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Cena (Regular)</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Szczegóły</th>
+                            </tr>
+                        </thead>
+                        <tbody id="eventsTableBody" class="bg-white divide-y divide-slate-200">
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -198,18 +184,20 @@
             </div>
         </div>
     </div>
-
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    let eventData = [];
     
-    // Dane wbudowane, jako fallback
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    let eventData = [];
+    const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSV5QtWbQ38EIj6_IwxYAyNyxi29ODr4aC5HFl38z5PmUXMnmBMXxX0m8YcoHPKEHxzQNb0uAwnW9sV/pub?output=csv';
+
     const fallbackData = [
         { ID_Wydarzenia: 'VERZO_20241123', Data_Wydarzenia: '2024-11-23', Nazwa_Wydarzenia: 'Andrzejki z Power Play', Organizator: 'Verzo', Miasto: 'Roosendaal', Kraj: 'NL', Lokalizacja_Venue: 'Klub Verzo', Pojemność_Venue: 600, Typ_Wydarzenia: 'Impreza klubowa', Podtyp_Wydarzenia: 'Koncert live act', Główny_Artysta_Headliner: 'Power Play', Support_DJs_Artyści: 'DJ Matys', Styl_Muzyczny: 'Disco Polo, Dance', Grupa_Docelowa_Target: 'Fani Disco Polo', Cena_Biletu_Early_Bird: 20.00, Cena_Biletu_Regular: 25.00, Cena_Biletu_w_Dniu_Imprezy: 30.00, Promocje_Specjalne: 'Brak', FB_Liczba_Uczestników: 450, FB_Liczba_Zainteresowanych: 1300, Szacowana_Frekwencja: 'Wysoka (75-90%)', Feedback_Po_Imprezie: 'Super energia, świetny koncert.', Konkurencja_w_Tym_Samym_Czasie: 'Brak', Kluczowe_Wnioski_Agenta: 'Koncerty disco polo to pewniak, przyciągają dedykowaną publiczność gotową zapłacić więcej za bilet.' },
         { ID_Wydarzenia: 'LUNA_20250614', Data_Wydarzenia: '2025-06-14', Nazwa_Wydarzenia: 'Tween Birthday Party', Organizator: 'Klub Luna', Miasto: 'Loosbroek', Kraj: 'NL', Lokalizacja_Venue: 'Klub Luna', Pojemność_Venue: 800, Typ_Wydarzenia: 'Impreza klubowa', Podtyp_Wydarzenia: 'Urodziny rezydenta', Główny_Artysta_Headliner: 'DJ Tween', Support_DJs_Artyści: 'SPLT, TKKN, Marty, Sonic, Abrixsound', Styl_Muzyczny: 'Club, Dance, Hardstyle', Grupa_Docelowa_Target: 'Stali bywalcy, fani mocniejszych brzmień', Cena_Biletu_Early_Bird: 12.50, Cena_Biletu_Regular: 17.50, Cena_Biletu_w_Dniu_Imprezy: 20.00, Promocje_Specjalne: 'Panie wstęp free do 23:00, 100 darmowych drinków', FB_Liczba_Uczestników: 410, FB_Liczba_Zainteresowanych: 1500, Szacowana_Frekwencja: 'Wyprzedane', Feedback_Po_Imprezie: 'Pełen klub, niesamowita energia. Najlepsza impreza od miesięcy.', Konkurencja_w_Tym_Samym_Czasie: 'Brak', Kluczowe_Wnioski_Agenta: 'Połączenie urodzin rezydenta, silnego line-upu i atrakcyjnych promocji to przepis na wyprzedany event.' }
     ];
 
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const mainContent = document.getElementById('mainContent');
     const dateRangeFilter = document.getElementById('dateRangeFilter');
     const organizerFilter = document.getElementById('organizerFilter');
     const cityFilter = document.getElementById('cityFilter');
@@ -221,20 +209,53 @@ document.addEventListener('DOMContentLoaded', function () {
     const dataStatus = document.getElementById('dataStatus');
 
     let charts = {};
-    let topRankedEvents = [];
 
     const colorPalette = [
         '#14b8a6', '#f59e0b', '#8b5cf6', '#3b82f6', '#ec4899',
         '#22c55e', '#ef4444', '#64748b', '#d946ef', '#6366f1'
     ];
-    
-    function processData(data) {
-        eventData = data;
+
+    function processNewData(newData, sourceText) {
+        eventData = newData;
         populateFilters();
         resetAllFilters();
         updateDashboard();
+        dataStatus.textContent = sourceText;
+        dataStatus.className = 'text-sm p-3 rounded-md bg-green-100 text-green-800';
     }
 
+    async function loadInitialData() {
+        try {
+            const response = await fetch(GOOGLE_SHEET_CSV_URL);
+            if (!response.ok) throw new Error('Błąd sieci podczas ładowania danych.');
+            const csvText = await response.text();
+            const parsedData = parseCSV(csvText);
+            
+            if (parsedData.length === 0) {
+                throw new Error('Arkusz danych jest pusty lub w nieprawidłowym formacie.');
+            }
+
+            eventData = parsedData;
+            initializeDashboard('Dane załadowano pomyślnie z domyślnego Arkusza Google.');
+
+        } catch (error) {
+            console.error("Błąd krytyczny:", error);
+            eventData = fallbackData;
+            initializeDashboard('Nie udało się załadować danych z magazynu. Wyświetlono dane przykładowe.', true);
+        }
+    }
+    
+    function initializeDashboard(statusText, isError = false){
+        loadingOverlay.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+        dataStatus.textContent = statusText;
+        dataStatus.className = `text-sm ${isError ? 'text-amber-800' : 'text-green-800'}`;
+        
+        populateFilters();
+        initializeCharts();
+        updateDashboard();
+    }
+    
     function parseCSV(csvText) {
         const lines = csvText.trim().split(/\r?\n/);
         if (lines.length < 2) return [];
@@ -255,40 +276,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         return data;
     }
-
-    async function loadDataFromUrl(url) {
-        dataStatus.textContent = 'Ładowanie danych...';
-        dataStatus.className = 'text-sm mt-2 text-slate-500';
-
-        try {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`Błąd sieci: ${response.status} ${response.statusText}`);
-            }
-            const csvText = await response.text();
-            const newData = parseCSV(csvText);
-            
-            if(newData.length === 0 || !newData[0].ID_Wydarzenia) {
-                 throw new Error('Nie udało się przetworzyć danych. Sprawdź format pliku CSV i nagłówki.');
-            }
-            
-            processData(newData);
-            dataStatus.textContent = `Pomyślnie wczytano ${newData.length} wydarzeń z podanego URL.`;
-            dataStatus.className = 'text-sm mt-2 text-green-600';
-
-        } catch (error) {
-            console.error(`Błąd wczytywania danych z ${url}:`, error);
-            dataStatus.textContent = `Błąd: ${error.message}. Sprawdź link i upewnij się, że arkusz jest poprawnie opublikowany.`;
-            dataStatus.className = 'text-sm mt-2 text-red-600';
-        }
-    }
-
-
+    
     function populateFilters() {
-        const organizers = ['Wszyscy', ...new Set(eventData.map(e => e.Organizator))].sort();
-        const cities = ['Wszystkie', ...new Set(eventData.map(e => e.Miasto))].sort();
-        const countries = ['Wszystkie', ...new Set(eventData.map(e => e.Kraj))].sort();
-        const eventTypes = ['Wszystkie', ...new Set(eventData.map(e => e.Typ_Wydarzenia))].sort();
+        const organizers = ['Wszyscy', ...new Set(eventData.map(e => e.Organizator).filter(Boolean))].sort();
+        const cities = ['Wszystkie', ...new Set(eventData.map(e => e.Miasto).filter(Boolean))].sort();
+        const countries = ['Wszystkie', ...new Set(eventData.map(e => e.Kraj).filter(Boolean))].sort();
+        const eventTypes = ['Wszystkie', ...new Set(eventData.map(e => e.Typ_Wydarzenia).filter(Boolean))].sort();
 
         organizerFilter.innerHTML = organizers.map(o => `<option value="${o}">${o}</option>`).join('');
         cityFilter.innerHTML = cities.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -309,6 +302,7 @@ document.addEventListener('DOMContentLoaded', function () {
         now.setHours(0, 0, 0, 0);
 
         let filteredData = eventData.filter(e => {
+            if(!e.Data_Wydarzenia) return false;
             const eventDate = new Date(e.Data_Wydarzenia);
             if (isNaN(eventDate.getTime())) return false;
             eventDate.setHours(0, 0, 0, 0);
@@ -365,13 +359,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (filters.organizer !== 'Wszyscy' && e.Organizator !== filters.organizer) return false;
             if (filters.city !== 'Wszystkie' && e.Miasto !== filters.city) return false;
             if (filters.country !== 'Wszystkie' && e.Kraj !== filters.country) return false;
-            if (filters.eventType !== 'Wszystkie' && e.Typ_Wydarzenia !== filters.eventType) return false;
+            if (filters.eventType && filters.eventType !== 'Wszystkie' && e.Typ_Wydarzenia !== filters.eventType) return false;
 
             return true;
         });
 
         updateKPIs(filteredData);
-        updateTopEvents(eventData, filteredData);
         updateTable(filteredData);
         updateCharts(filteredData);
     }
@@ -379,103 +372,26 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateKPIs(data) {
         document.getElementById('kpiTotalEvents').textContent = data.length;
 
-        const totalTicketPrice = data.reduce((sum, e) => sum + (e.Cena_Biletu_Regular || 0), 0);
         const pricedEvents = data.filter(e => e.Cena_Biletu_Regular > 0);
+        const totalTicketPrice = pricedEvents.reduce((sum, e) => sum + (e.Cena_Biletu_Regular || 0), 0);
         const avgPrice = pricedEvents.length > 0 ? (totalTicketPrice / pricedEvents.length) : 0;
         document.getElementById('kpiAvgPrice').textContent = `${avgPrice.toFixed(2)} €`;
 
         const organizerCounts = data.reduce((acc, e) => {
-            acc[e.Organizator] = (acc[e.Organizator] || 0) + 1;
+            if(e.Organizator) acc[e.Organizator] = (acc[e.Organizator] || 0) + 1;
             return acc;
         }, {});
         const topOrganizer = Object.keys(organizerCounts).reduce((a, b) => organizerCounts[a] > organizerCounts[b] ? a : b, '-');
         document.getElementById('kpiTopOrganizer').textContent = topOrganizer;
 
         const cityCounts = data.reduce((acc, e) => {
-            acc[e.Miasto] = (acc[e.Miasto] || 0) + 1;
+            if(e.Miasto) acc[e.Miasto] = (acc[e.Miasto] || 0) + 1;
             return acc;
         }, {});
         const topCity = Object.keys(cityCounts).reduce((a, b) => cityCounts[a] > cityCounts[b] ? a : b, '-');
         document.getElementById('kpiTopCity').textContent = topCity;
     }
-
-    function updateTopEvents(fullData, filteredUpcomingData) {
-        const topEventsList = document.getElementById('topEventsList');
-        topEventsList.innerHTML = '';
-        
-        const attendanceMap = { 'Niska (0-50%)': 0.25, 'Średnia (50-75%)': 0.625, 'Wysoka (75-90%)': 0.825, 'Wyprzedane': 1.0 };
-        const now = new Date();
-        now.setHours(0,0,0,0);
-
-        const pastEvents = fullData.filter(e => new Date(e.Data_Wydarzenia) < now && e.Szacowana_Frekwencja && e.Pojemność_Venue > 0);
-        
-        const artistStrength = pastEvents.reduce((acc, e) => {
-            const artist = e.Główny_Artysta_Headliner;
-            if (!artist) return acc;
-            
-            const attendanceScore = attendanceMap[e.Szacowana_Frekwencja] || 0;
-            const guestEstimate = e.Pojemność_Venue * attendanceScore;
-
-            if (!acc[artist]) {
-                acc[artist] = { totalGuests: 0, count: 0 };
-            }
-            acc[artist].totalGuests += guestEstimate;
-            acc[artist].count++;
-            return acc;
-        }, {});
-
-        Object.keys(artistStrength).forEach(artist => {
-            artistStrength[artist].avgGuests = artistStrength[artist].totalGuests / artistStrength[artist].count;
-        });
-        
-        const totalAvgGuests = Object.values(artistStrength).reduce((sum, val) => sum + val.avgGuests, 0) / Object.keys(artistStrength).length || 500;
-
-
-        const futureEvents = filteredUpcomingData.filter(e => new Date(e.Data_Wydarzenia) >= now);
-
-        const rankedEvents = futureEvents.map(event => {
-            const artist = event.Główny_Artysta_Headliner;
-            const artistAvg = artistStrength[artist] ? artistStrength[artist].avgGuests : totalAvgGuests;
-            
-            const predictedAttendance = Math.min(artistAvg, event.Pojemność_Venue);
-            const hypeScore = event.Pojemność_Venue > 0 ? (predictedAttendance / event.Pojemność_Venue) * 100 : 0;
-            
-            return { ...event, predictedAttendance, hypeScore };
-        }).sort((a, b) => b.predictedAttendance - a.predictedAttendance);
-
-        topRankedEvents = rankedEvents.slice(0, 5);
-        
-        if (topRankedEvents.length === 0) {
-            topEventsList.innerHTML = `<p class="text-slate-500">Brak nadchodzących wydarzeń w wybranym zakresie.</p>`;
-            return;
-        }
-
-        topRankedEvents.forEach(event => {
-            const card = document.createElement('div');
-            card.className = 'bg-white p-4 rounded-lg shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-4';
-            card.innerHTML = `
-                <div class="flex-grow">
-                    <p class="font-semibold text-slate-800">${event.Nazwa_Wydarzenia}</p>
-                    <p class="text-sm text-slate-500">${event.Data_Wydarzenia} &middot; ${event.Główny_Artysta_Headliner} @ ${event.Lokalizacja_Venue}, ${event.Miasto}</p>
-                    <div class="mt-2">
-                        <div class="flex justify-between mb-1">
-                            <span class="text-sm font-medium text-teal-700">Poziom "Hype" (Prognoza zapełnienia)</span>
-                            <span class="text-sm font-medium text-teal-700">${Math.round(event.hypeScore)}%</span>
-                        </div>
-                        <div class="w-full bg-slate-200 rounded-full h-2.5">
-                            <div class="bg-teal-500 h-2.5 rounded-full" style="width: ${event.hypeScore}%"></div>
-                        </div>
-                    </div>
-                </div>
-                <button class="view-details-btn text-teal-600 hover:text-teal-900 text-sm font-semibold flex-shrink-0" data-event-id="${event.ID_Wydarzenia}">
-                    Zobacz szczegóły
-                </button>
-            `;
-            topEventsList.appendChild(card);
-        });
-
-    }
-
+    
     function updateTable(data) {
         const tableBody = document.getElementById('eventsTableBody');
         tableBody.innerHTML = '';
@@ -501,15 +417,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    document.getElementById('topEventsList').addEventListener('click', function(e){
-        if (e.target && e.target.classList.contains('view-details-btn')) {
-            const eventId = e.target.getAttribute('data-event-id');
-            const event = eventData.find(ev => ev.ID_Wydarzenia === eventId);
-            if(event) showModal(event);
-        }
-    });
-
-    document.getElementById('eventsTableBody').addEventListener('click', function(e){
+     document.getElementById('eventsTableBody').addEventListener('click', function(e){
         if (e.target && e.target.classList.contains('view-details-btn')) {
             const eventId = e.target.getAttribute('data-event-id');
             const event = eventData.find(ev => ev.ID_Wydarzenia === eventId);
@@ -540,34 +448,17 @@ document.addEventListener('DOMContentLoaded', function () {
             data: { labels: [], datasets: [] },
             options: { ...defaultChartOptions, scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: true, position: 'bottom' } } }
         });
-
-        charts.priceByEventType = new Chart(document.getElementById('priceByEventTypeChart'), {
-            type: 'bar',
-            data: { labels: [], datasets: [] },
-            options: { ...defaultChartOptions, indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `Średnio ${c.raw.toFixed(2)} €` } } } }
-        });
-        
-        charts.engagementVsAttendance = new Chart(document.getElementById('engagementVsAttendanceChart'), {
-            type: 'scatter',
-            data: { datasets: [] },
-            options: { ...defaultChartOptions, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => {
-                const label = c.dataset.data[c.dataIndex].label || '';
-                return `${label}: ${c.raw.y} uczestników`;
-            } } } } }
-        });
     }
 
     function updateCharts(data) {
         updateEventsOverTimeChart(data);
         updateOrganizerMarketShareChart(data);
-        updatePriceByEventTypeChart(data);
-        updateEngagementVsAttendanceChart(data);
     }
     
     function updateEventsOverTimeChart(data) {
         const eventsByMonth = data.reduce((acc, e) => {
             const month = e.Data_Wydarzenia.substring(0, 7);
-            acc[month] = (acc[month] || 0) + 1;
+            if(month) acc[month] = (acc[month] || 0) + 1;
             return acc;
         }, {});
         const sortedMonths = Object.keys(eventsByMonth).sort();
@@ -584,7 +475,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     function updateOrganizerMarketShareChart(data) {
         const organizerCounts = data.reduce((acc, e) => {
-            acc[e.Organizator] = (acc[e.Organizator] || 0) + 1;
+            if(e.Organizator) acc[e.Organizator] = (acc[e.Organizator] || 0) + 1;
             return acc;
         }, {});
         charts.organizerMarketShare.data.labels = Object.keys(organizerCounts);
@@ -593,51 +484,6 @@ document.addEventListener('DOMContentLoaded', function () {
             backgroundColor: colorPalette,
         }];
         charts.organizerMarketShare.update();
-    }
-    
-    function updatePriceByEventTypeChart(data) {
-        const pricesByType = data.reduce((acc, e) => {
-            if (!acc[e.Typ_Wydarzenia]) acc[e.Typ_Wydarzenia] = { total: 0, count: 0 };
-            if(e.Cena_Biletu_Regular > 0) {
-              acc[e.Typ_Wydarzenia].total += e.Cena_Biletu_Regular;
-              acc[e.Typ_Wydarzenia].count++;
-            }
-            return acc;
-        }, {});
-        const avgPrices = Object.keys(pricesByType).map(type => ({
-            type,
-            avg: pricesByType[type].count > 0 ? pricesByType[type].total / pricesByType[type].count : 0
-        }));
-        charts.priceByEventType.data.labels = avgPrices.map(item => item.type);
-        charts.priceByEventType.data.datasets = [{
-            label: 'Średnia cena',
-            data: avgPrices.map(item => item.avg),
-            backgroundColor: 'rgba(13, 148, 136, 0.6)',
-        }];
-        charts.priceByEventType.update();
-    }
-    
-    function updateEngagementVsAttendanceChart(data) {
-        const attendanceMap = { 'Niska (0-50%)': 1, 'Średnia (50-75%)': 2, 'Wysoka (75-90%)': 3, 'Wyprzedane': 4 };
-        const chartData = data.filter(e => e.Szacowana_Frekwencja).map(e => ({
-            x: e.FB_Liczba_Uczestników + e.FB_Liczba_Zainteresowanych,
-            y: attendanceMap[e.Szacowana_Frekwencja] || 0,
-            label: e.Nazwa_Wydarzenia
-        }));
-
-        charts.engagementVsAttendance.data.datasets = [{
-            label: 'Wydarzenia',
-            data: chartData,
-            backgroundColor: 'rgba(13, 148, 136, 0.6)',
-        }];
-        charts.engagementVsAttendance.options.scales.y.ticks = {
-             callback: function(value, index, values) {
-                return Object.keys(attendanceMap).find(key => attendanceMap[key] === value) || '';
-            }
-        };
-        charts.engagementVsAttendance.options.scales.x.title = { display: true, text: 'Zaangażowanie na Facebooku (Suma)' };
-        charts.engagementVsAttendance.options.scales.y.title = { display: true, text: 'Szacowana Frekwencja' };
-        charts.engagementVsAttendance.update();
     }
 
     function showModal(event) {
@@ -674,12 +520,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 ${renderDetail('Kluczowe wnioski agenta', `<span class="italic text-teal-800 bg-teal-50 p-3 rounded-md block">${event.Kluczowe_Wnioski_Agenta}</span>`)}
             </div>
         `;
-
+        
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         setTimeout(() => modal.querySelector('.modal-content').classList.remove('scale-95'), 10);
     }
-
+    
     function closeModal() {
         const modal = document.getElementById('eventModal');
         modal.querySelector('.modal-content').classList.add('scale-95');
@@ -689,14 +535,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 250);
     }
     
-    function resetAllFilters() {
-        dateRangeFilter.value = 'all';
-        organizerFilter.value = 'Wszyscy';
-        cityFilter.value = 'Wszystkie';
-        countryFilter.value = 'Wszystkie';
-        eventTypeFilter.value = 'Wszystkie';
-    }
-
     document.getElementById('closeModal').addEventListener('click', closeModal);
     document.getElementById('eventModal').addEventListener('click', (e) => {
         if (e.target === document.getElementById('eventModal')) {
@@ -705,23 +543,23 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     [dateRangeFilter, organizerFilter, cityFilter, countryFilter, eventTypeFilter].forEach(filter => {
-        filter.addEventListener('change', updateDashboard);
+        if (filter) {
+            filter.addEventListener('change', updateDashboard);
+        }
     });
     
     resetFiltersBtn.addEventListener('click', () => {
-        resetAllFilters();
+        document.getElementById('dateRangeFilter').value = 'all';
+        document.getElementById('organizerFilter').value = 'Wszyscy';
+        document.getElementById('cityFilter').value = 'Wszystkie';
+        document.getElementById('countryFilter').value = 'Wszystkie';
+        if (document.getElementById('eventTypeFilter')) {
+            document.getElementById('eventTypeFilter').value = 'Wszystkie';
+        }
         updateDashboard();
     });
 
-    loadDataBtn.addEventListener('click', () => {
-        const url = googleSheetUrlInput.value;
-        if(url) {
-            loadDataFromUrl(url);
-        }
-    });
-
-    initializeCharts();
-    processData(fallbackData);
+    loadInitialData();
 });
 </script>
 
