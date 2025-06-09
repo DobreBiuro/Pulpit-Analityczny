@@ -45,13 +45,20 @@
             border-color: #14b8a6;
             box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.3);
         }
-        .form-input.updated {
-            background-color: #fefce8; /* yellow-50 */
-            border-color: #f59e0b; /* amber-500 */
-        }
         .ai-badge {
             font-size: 0.75rem;
             margin-left: 8px;
+         }
+         .tab-btn {
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 3px solid transparent;
+            transition: color 0.2s, border-color 0.2s;
+         }
+         .tab-btn.active {
+             color: #0d9488;
+             border-color: #0d9488;
          }
     </style>
 </head>
@@ -60,7 +67,7 @@
     <div class="container mx-auto p-4 md:p-6 lg:p-8 max-w-4xl">
         <header class="mb-8 text-center">
             <h1 class="text-3xl font-bold text-slate-900">Poster Importer AI</h1>
-            <p class="text-slate-600 mt-1">Przeciągnij plakat, a AI zajmie się resztą.</p>
+            <p class="text-slate-600 mt-1">Przeciągnij plakat (lub wiele), a AI zajmie się resztą.</p>
         </header>
 
          <!-- Sekcja Konfiguracji API -->
@@ -86,16 +93,47 @@
         </div>
 
         <!-- Kroki Procesu -->
-        <div id="uploadStep" class="bg-white p-8 rounded-lg shadow-sm">
-            <div id="dropZone" class="drop-zone flex flex-col items-center justify-center p-10 rounded-lg text-center cursor-pointer">
-                 <p id="dropZoneText" class="font-semibold text-slate-700">Wczytywanie aktualnej bazy danych...</p>
+        <div id="uploadStep" class="bg-white rounded-lg shadow-sm">
+             <div class="border-b border-gray-200">
+                <nav class="-mb-px flex" aria-label="Tabs">
+                    <button class="tab-btn active" data-tab="single">Import Pojedynczy</button>
+                    <button class="tab-btn" data-tab="bulk">Import Masowy (BULK)</button>
+                </nav>
             </div>
-            <input type="file" id="fileInput" class="hidden" accept="image/png, image/jpeg">
+            <!-- Zakładka 1: Import pojedynczy -->
+            <div id="singleTab" class="p-8">
+                <div id="dropZoneSingle" class="drop-zone flex flex-col items-center justify-center p-10 rounded-lg text-center cursor-pointer">
+                    <p id="dropZoneText" class="font-semibold text-slate-700">Wczytywanie bazy danych...</p>
+                </div>
+                <input type="file" id="fileInput" class="hidden" accept="image/png, image/jpeg">
+            </div>
+            <!-- Zakładka 2: Import masowy -->
+            <div id="bulkTab" class="p-8 hidden">
+                <div id="dropZoneBulk" class="drop-zone flex flex-col items-center justify-center p-10 rounded-lg text-center cursor-pointer">
+                     <p class="font-semibold text-slate-700">Przeciągnij do 10 plików na raz</p>
+                     <p class="text-sm text-slate-500 mt-1">lub</p>
+                     <button id="browseBtnBulk" type="button" class="mt-3 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Wybierz pliki</button>
+                </div>
+                <input type="file" id="fileInputBulk" class="hidden" accept="image/png, image/jpeg" multiple>
+                 <div class="mt-6 text-center text-slate-500">
+                     <div class="relative flex py-5 items-center">
+                        <div class="flex-grow border-t border-gray-300"></div>
+                        <span class="flex-shrink mx-4 text-gray-400 text-sm">LUB</span>
+                        <div class="flex-grow border-t border-gray-300"></div>
+                    </div>
+                     <label for="gdriveInput" class="block text-sm font-medium text-slate-700 mb-2">Wklej link do publicznego folderu Google Drive (BETA)</label>
+                      <div class="flex gap-2">
+                        <input type="text" id="gdriveInput" class="form-input flex-grow" placeholder="https://drive.google.com/drive/folders/...">
+                        <button id="gdriveBtn" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Importuj z GDrive</button>
+                      </div>
+                      <p class="text-xs text-slate-400 mt-2">Funkcja w fazie testów. Zalecane jest bezpośrednie wrzucanie plików.</p>
+                 </div>
+            </div>
         </div>
 
         <div id="processingStep" class="hidden bg-white p-8 rounded-lg shadow-sm text-center">
             <div class="spinner mx-auto"></div>
-            <p id="processingText" class="mt-4 font-semibold text-slate-700">Analizuję poster przy użyciu AI...</p>
+            <p id="processingText" class="mt-4 font-semibold text-slate-700"></p>
         </div>
         
         <div id="reviewStep" class="hidden bg-white p-8 rounded-lg shadow-sm">
@@ -107,41 +145,54 @@
             </div>
         </div>
 
-        <div id="confirmationStep" class="hidden bg-white p-8 rounded-lg shadow-sm text-center">
-             <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        <div id="bulkProcessingStep" class="hidden bg-white p-8 rounded-lg shadow-sm">
+            <h2 class="text-xl font-bold mb-4">Przetwarzanie Masowe</h2>
+            <div class="mb-4">
+                <div class="flex justify-between mb-1">
+                    <span class="text-base font-medium text-teal-700">Postęp</span>
+                    <span id="progressText" class="text-sm font-medium text-teal-700">0 / 0</span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-4">
+                    <div id="progressBar" class="bg-teal-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
             </div>
-            <h2 class="text-xl font-bold mt-4">Sukces!</h2>
-            <p id="confirmationMessage" class="text-slate-600 mt-2"></p>
-            <div class="mt-6 flex flex-col sm:flex-row justify-center gap-3">
-                 <button id="addAnotherBtn" class="bg-white text-teal-600 border border-teal-600 py-2 px-6 rounded-md hover:bg-teal-50 transition">Dodaj kolejny poster</button>
-                 <a href="dashboard.html" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition inline-block">Przejdź do pulpitu analitycznego</a>
+            <div id="bulkFileList" class="space-y-2 max-h-96 overflow-y-auto p-2 border rounded-md"></div>
+             <div class="mt-6 flex flex-col sm:flex-row justify-center gap-3">
+                 <button id="backToImporterBtn" class="bg-white text-teal-600 border border-teal-600 py-2 px-6 rounded-md hover:bg-teal-50 transition">Dodaj kolejne</button>
+                 <a href="dashboard.html" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition inline-block">Przejdź do pulpitu</a>
             </div>
         </div>
+
     </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-    const dropZone = document.getElementById('dropZone');
+    const dropZoneSingle = document.getElementById('dropZoneSingle');
+    const dropZoneBulk = document.getElementById('dropZoneBulk');
     const fileInput = document.getElementById('fileInput');
+    const fileInputBulk = document.getElementById('fileInputBulk');
     const uploadStep = document.getElementById('uploadStep');
     const processingStep = document.getElementById('processingStep');
     const processingText = document.getElementById('processingText');
     const reviewStep = document.getElementById('reviewStep');
-    const confirmationStep = document.getElementById('confirmationStep');
+    const bulkProcessingStep = document.getElementById('bulkProcessingStep');
     const reviewForm = document.getElementById('reviewForm');
     const reviewTitle = document.getElementById('reviewTitle');
     const saveBtn = document.getElementById('saveBtn');
     const cancelBtn = document.getElementById('cancelBtn');
-    const addAnotherBtn = document.getElementById('addAnotherBtn');
-    const confirmationMessage = document.getElementById('confirmationMessage');
+    const backToImporterBtn = document.getElementById('backToImporterBtn');
     const apiKeyInput = document.getElementById('apiKeyInput');
     const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
     const appsScriptUrlInput = document.getElementById('appsScriptUrlInput');
     const saveAppsScriptUrlBtn = document.getElementById('saveAppsScriptUrlBtn');
     const configStatus = document.getElementById('configStatus');
     const dropZoneText = document.getElementById('dropZoneText');
+    const tabs = document.querySelectorAll('.tab-btn');
+    const tabContents = {
+        single: document.getElementById('singleTab'),
+        bulk: document.getElementById('bulkTab')
+    };
     
     const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSV5QtWbQ38EIj6_IwxYAyNyxi29ODr4aC5HFl38z5PmUXMnmBMXxX0m8YcoHPKEHxzQNb0uAwnW9sV/pub?output=csv';
     let eventData = [];
@@ -203,13 +254,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             eventData = parseCSV(csvText, formHeaders);
             
-            dropZone.innerHTML = `
+            dropZoneSingle.innerHTML = `
                 <svg class="w-12 h-12 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h2a4 4 0 014 4v1m-4 5h12m0 0l-4-4m4 4l-4 4"></path></svg>
                 <p class="font-semibold text-slate-700">Przeciągnij i upuść plik z posterem tutaj</p>
                 <p class="text-sm text-slate-500 mt-1">lub</p>
-                <button id="browseBtn" type="button" class="mt-3 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Wybierz plik</button>
+                <button id="browseBtnSingle" type="button" class="mt-3 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Wybierz plik</button>
             `;
-            document.getElementById('browseBtn').addEventListener('click', () => fileInput.click());
+            document.getElementById('browseBtnSingle').addEventListener('click', () => fileInput.click());
 
         } catch (error) {
             console.error(error);
@@ -231,22 +282,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showStep(step) {
-        [uploadStep, processingStep, reviewStep, confirmationStep].forEach(s => s.classList.add('hidden'));
+        [uploadStep, processingStep, reviewStep, bulkProcessingStep].forEach(s => s.classList.add('hidden'));
         step.classList.remove('hidden');
     }
-
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); });
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('drag-over');
-        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-    });
+    
+    const setupDropZone = (dz, input) => {
+        if (!dz) return;
+        dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('drag-over'); });
+        dz.addEventListener('dragleave', (e) => { e.preventDefault(); dz.classList.remove('drag-over'); });
+        dz.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dz.classList.remove('drag-over');
+            if (e.dataTransfer.files.length) {
+                if(input.multiple) handleMultipleFiles(e.dataTransfer.files);
+                else handleFile(e.dataTransfer.files[0]);
+            }
+        });
+    };
+    setupDropZone(dropZoneSingle, fileInput);
+    setupDropZone(dropZoneBulk, fileInputBulk);
+    
     fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+    fileInputBulk.addEventListener('change', () => { if (fileInputBulk.files.length) handleMultipleFiles(fileInputBulk.files); });
+    document.getElementById('browseBtnBulk').addEventListener('click', () => fileInputBulk.click());
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            Object.values(tabContents).forEach(content => content.classList.add('hidden'));
+            tabContents[tab.dataset.tab].classList.remove('hidden');
+        });
+    });
 
     async function handleFile(file) {
         if (!geminiApiKey || !appsScriptUrl) {
-            alert('Proszę najpierw skonfigurować klucz API do AI oraz URL skryptu Google Aps.');
+            alert('Proszę najpierw skonfigurować klucz API AI oraz URL skryptu Google Apps.');
             return;
         }
         if (!file.type.startsWith('image/')) {
@@ -273,6 +344,73 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
+    
+    async function handleMultipleFiles(files) {
+        if (files.length > 10) {
+            alert("Można przetworzyć maksymalnie 10 plików na raz.");
+            return;
+        }
+        const fileQueue = Array.from(files);
+        showStep(bulkProcessingStep);
+        const fileListContainer = document.getElementById('bulkFileList');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        
+        fileListContainer.innerHTML = '';
+        let processedCount = 0;
+        let newCount = 0;
+        let updatedCount = 0;
+        
+        progressText.textContent = `${processedCount} / ${fileQueue.length}`;
+        progressBar.style.width = '0%';
+
+        for (const file of fileQueue) {
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'flex items-center gap-3 p-2 rounded-md bg-slate-50';
+            fileDiv.innerHTML = `<div id="spinner-${processedCount}" class="spinner !w-5 !h-5"></div><span class="text-sm text-slate-700">${file.name}</span><span id="status-${processedCount}" class="text-sm ml-auto text-slate-500">Przetwarzam...</span>`;
+            fileListContainer.appendChild(fileDiv);
+
+            try {
+                const reader = new FileReader();
+                const base64Image = await new Promise((resolve, reject) => {
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+
+                const finalData = await getAiAnalysis(base64Image, file.type, file.name);
+                const result = await saveToDatabase(finalData);
+                
+                if (result.status === 'success') {
+                    document.getElementById(`spinner-${processedCount}`).outerHTML = '<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                    if (result.message.includes("Dodano")) newCount++;
+                    if (result.message.includes("zaktualizowano")) updatedCount++;
+                    document.getElementById(`status-${processedCount}`).textContent = 'Gotowe';
+                    document.getElementById(`status-${processedCount}`).className = 'text-sm ml-auto text-green-600';
+
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (err) {
+                console.error(`Błąd przy przetwarzaniu ${file.name}:`, err);
+                document.getElementById(`spinner-${processedCount}`).outerHTML = '<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                document.getElementById(`status-${processedCount}`).textContent = 'Błąd';
+                document.getElementById(`status-${processedCount}`).className = 'text-sm ml-auto text-red-600';
+            }
+            
+            processedCount++;
+            progressText.textContent = `${processedCount} / ${fileQueue.length}`;
+            progressBar.style.width = `${(processedCount / fileQueue.length) * 100}%`;
+        }
+        
+        const summary = document.createElement('div');
+        summary.className = 'mt-4 p-4 bg-teal-50 border border-teal-200 rounded-md text-center';
+        summary.innerHTML = `<h3 class="font-semibold">Przetwarzanie zakończone</h3><p>Dodano ${newCount} nowych wydarzeń i zaktualizowano ${updatedCount}.</p>`;
+        fileListContainer.prepend(summary);
+        
+        await loadEventDatabase();
+    }
+
 
     async function getAiAnalysis(base64ImageData, mimeType, fileName) {
         const prompt = `Jesteś super-asystentem analityka danych eventowych. Twoim zadaniem jest przeanalizowanie poniższego plakatu i uzupełnienie JAK NAJWIĘKSZEJ liczby pól w formacie JSON. Nazwa pliku to "${fileName}".
@@ -280,8 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
         1.  **Odczytaj dane z plakatu (OCR):** Odczytaj podstawowe dane takie jak Nazwa_Wydarzenia, Data_Wydarzenia (format YYYY-MM-DD, jeśli nie ma roku, użyj 0000), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator.
         2.  **Wzbogać dane (WNIOSKOWANIE I WIEDZA ZEWNĘTRZNA):** Na podstawie odczytanych informacji, uzupełnij puste pola:
             * **Styl_Muzyczny**: Jaki styl muzyczny gra Główny_Artysta_Headliner?
-            * **Region_Obszar**: W jakim regionie/prowincji leży Miasto?
-            * **Pojemność_Venue (szac.)**: Poszukaj w internecie (symulacja) jaka jest typowa pojemność lokalu imprezowego dla 'Lokalizacja_Venue' w 'Miasto'. Podaj jako liczbę.
+            * **Pojemność_Venue**: Poszukaj w internecie (symulacja) jaka jest typowa pojemność dla 'Lokalizacja_Venue' w 'Miasto'. Podaj jako liczbę.
             * **Cena_Biletu_Regular**: Poszukaj ceny na plakacie lub zasugeruj typową cenę dla tego typu wydarzenia.
         ZWRÓĆ JEDEN kompletny obiekt JSON. Jeśli informacji brakuje, pole ma być puste.`;
         
@@ -308,15 +445,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dateThisYear = new Date(`${currentYear}-${monthDay}`);
                 const dateNextYear = new Date(`${currentYear + 1}-${monthDay}`);
                 
-                // Dzień tygodnia (0=Niedziela, 6=Sobota)
                 const isSaturdayThisYear = dateThisYear.getDay() === 6;
                 const isSaturdayNextYear = dateNextYear.getDay() === 6;
 
-                if (isSaturdayThisYear) {
-                    yearToUse = currentYear;
-                } else if (isSaturdayNextYear) {
-                    yearToUse = currentYear + 1;
-                } else {
+                if (isSaturdayThisYear) { yearToUse = currentYear; } 
+                else if (isSaturdayNextYear) { yearToUse = currentYear + 1; } 
+                else {
                     const today = new Date();
                     today.setHours(0,0,0,0);
                     yearToUse = (dateThisYear >= today) ? currentYear : currentYear + 1;
@@ -346,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.Nazwa_Wydarzenia && extractedData.Nazwa_Wydarzenia && event.Nazwa_Wydarzenia.toLowerCase().includes(extractedData.Nazwa_Wydarzenia.toLowerCase())) score += 2;
             if (event.Miasto && extractedData.Miasto && event.Miasto.toLowerCase() === extractedData.Miasto.toLowerCase()) score += 2;
             
-            return score >= 7; // Próg podobieństwa
+            return score >= 7; 
         });
     }
     
@@ -385,6 +519,32 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${year}-${newIdNum}`;
     }
 
+    async function saveToDatabase(eventPayload) {
+         const existingEvent = findExistingEvent(eventPayload);
+         let action;
+         if (existingEvent) {
+             action = 'update';
+             eventPayload.ID_Wydarzenia = existingEvent.ID_Wydarzenia;
+         } else {
+             action = 'append';
+             eventPayload.ID_Wydarzenia = generateNewEventId(eventPayload);
+         }
+        
+        eventPayload.Agent_Wprowadzający = "AI-OCR";
+        const requiredFields = ['Nazwa_Wydarzenia', 'Data_Wydarzenia', 'Organizator', 'Miasto', 'Kraj', 'Lokalizacja_Venue', 'Główny_Artysta_Headliner'];
+        const isComplete = requiredFields.every(field => eventPayload[field] && eventPayload[field].trim() !== '');
+        eventPayload.Status_Rekordu = isComplete ? "Kompletny" : "Do weryfikacji";
+        eventPayload.Data_Ostatniej_Aktualizacji = new Date().toISOString().slice(0, 10);
+
+        const response = await fetch(appsScriptUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: action, data: eventPayload })
+        });
+        return await response.json();
+    }
+
+
     async function handleSave() {
         processingText.textContent = "Zapisywanie danych w Arkuszu Google...";
         showStep(processingStep);
@@ -394,31 +554,9 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let [key, value] of formData.entries()) {
             eventPayload[key] = value;
         }
-        
-        const existingEventId = reviewForm.dataset.existingEventId;
-        
-        let action;
-        if (existingEventId) {
-            action = 'update';
-            eventPayload.ID_Wydarzenia = existingEventId;
-        } else {
-            action = 'append';
-            eventPayload.ID_Wydarzenia = generateNewEventId(eventPayload);
-        }
-        
-        eventPayload.Agent_Wprowadzający = "AI-OCR";
-        const requiredFields = ['Nazwa_Wydarzenia', 'Data_Wydarzenia', 'Organizator', 'Miasto', 'Kraj', 'Lokalizacja_Venue', 'Główny_Artysta_Headliner'];
-        const isComplete = requiredFields.every(field => eventPayload[field] && eventPayload[field].trim() !== '');
-        eventPayload.Status_Rekordu = isComplete ? "Kompletny" : "Do weryfikacji";
-        eventPayload.Data_Ostatniej_Aktualizacji = new Date().toISOString().slice(0, 10);
 
         try {
-            const response = await fetch(appsScriptUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain' },
-                body: JSON.stringify({ action: action, data: eventPayload })
-            });
-            const result = await response.json();
+            const result = await saveToDatabase(eventPayload);
 
             if (result.status === 'success') {
                 confirmationMessage.textContent = result.message;
@@ -437,6 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function resetImporter() {
         fileInput.value = '';
+        fileInputBulk.value = '';
         reviewForm.innerHTML = '';
         reviewForm.dataset.existingEventId = '';
         showStep(uploadStep);
@@ -444,7 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     saveBtn.addEventListener('click', handleSave);
     cancelBtn.addEventListener('click', resetImporter);
-    addAnotherBtn.addEventListener('click', resetImporter);
+    backToImporterBtn.addEventListener('click', resetImporter);
     
     setupConfig();
     loadEventDatabase();
