@@ -47,9 +47,14 @@
 <body class="text-slate-800">
 
     <div class="container mx-auto p-4 md:p-6 lg:p-8">
-        <header class="mb-8">
-            <h1 class="text-3xl font-bold text-slate-900">Pulpit Analityczny Konkurencji</h1>
-            <p class="text-slate-600 mt-1">Interaktywna analiza rynku polskich imprez w regionie.</p>
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900">Pulpit Analityczny Konkurencji</h1>
+                <p class="text-slate-600 mt-1">Interaktywna analiza rynku polskich imprez w regionie.</p>
+            </div>
+            <a href="index.html" class="bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition font-semibold whitespace-nowrap">
+                ➕ Dodaj Nowy Poster Imprezy
+            </a>
         </header>
 
         <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-75 z-50 flex flex-col items-center justify-center">
@@ -214,19 +219,17 @@ document.addEventListener('DOMContentLoaded', () => {
         '#14b8a6', '#f59e0b', '#8b5cf6', '#3b82f6', '#ec4899',
         '#22c55e', '#ef4444', '#64748b', '#d946ef', '#6366f1'
     ];
-
-    function processNewData(newData, sourceText) {
-        eventData = newData;
-        populateFilters();
-        resetAllFilters();
-        updateDashboard();
-        dataStatus.textContent = sourceText;
-        dataStatus.className = 'text-sm p-3 rounded-md bg-green-100 text-green-800';
+    
+    async function loadInitialData() {
+        await loadData(GOOGLE_SHEET_CSV_URL);
     }
 
-    async function loadInitialData() {
+    async function loadData(url, isManual = false) {
+        loadingOverlay.classList.remove('hidden');
+        mainContent.classList.add('hidden');
+        
         try {
-            const response = await fetch(GOOGLE_SHEET_CSV_URL);
+            const response = await fetch(url);
             if (!response.ok) throw new Error('Błąd sieci podczas ładowania danych.');
             const csvText = await response.text();
             const parsedData = parseCSV(csvText);
@@ -236,7 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             eventData = parsedData;
-            initializeDashboard('Dane załadowano pomyślnie z domyślnego Arkusza Google.');
+            const statusText = isManual ? `Pomyślnie załadowano dane z podanego URL.` : 'Dane załadowano pomyślnie z domyślnego Arkusza Google.';
+            initializeDashboard(statusText);
 
         } catch (error) {
             console.error("Błąd krytyczny:", error);
@@ -248,9 +252,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function initializeDashboard(statusText, isError = false){
         loadingOverlay.classList.add('hidden');
         mainContent.classList.remove('hidden');
-        dataStatus.textContent = statusText;
-        dataStatus.className = `text-sm ${isError ? 'text-amber-800' : 'text-green-800'}`;
         
+        if (document.getElementById('dataStatus')) {
+            dataStatus.textContent = statusText;
+            dataStatus.className = `text-sm ${isError ? 'text-amber-800' : 'text-green-800'}`;
+        } else {
+             const dataStatusDiv = document.createElement('div');
+             dataStatusDiv.id = 'dataStatus';
+             dataStatusDiv.className = `p-3 rounded-md mb-8 text-sm ${isError ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}`;
+             dataStatusDiv.textContent = statusText;
+             mainContent.prepend(dataStatusDiv);
+        }
+
         populateFilters();
         initializeCharts();
         updateDashboard();
@@ -557,6 +570,13 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('eventTypeFilter').value = 'Wszystkie';
         }
         updateDashboard();
+    });
+
+    loadDataBtn.addEventListener('click', () => {
+        const url = googleSheetUrlInput.value;
+        if(url) {
+            loadData(url, true);
+        }
     });
 
     loadInitialData();
