@@ -38,8 +38,30 @@
             <div id="userProfile" class="text-right"></div>
         </header>
 
-         <!-- Kroki Procesu -->
-        <div id="uploadStep" class="bg-white rounded-lg shadow-sm">
+         <!-- Sekcja Konfiguracji API -->
+        <div id="configSection" class="bg-white p-4 rounded-lg shadow-sm mb-8">
+            <h2 class="text-lg font-semibold mb-3 text-slate-800">Konfiguracja Połączenia z Bazą Danych</h2>
+            <div class="space-y-4">
+                 <div>
+                    <label for="apiKeyInput" class="block text-sm font-medium text-slate-700">Klucz API AI</label>
+                    <div class="flex gap-2 mt-1">
+                        <input type="password" id="apiKeyInput" placeholder="Wklej swój klucz API AI..." class="form-input flex-grow">
+                        <button id="saveApiKeyBtn" class="bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Zapisz</button>
+                    </div>
+                 </div>
+                 <div>
+                    <label for="appsScriptUrlInput" class="block text-sm font-medium text-slate-700">URL Skryptu Google Apps</label>
+                    <div class="flex gap-2 mt-1">
+                        <input type="password" id="appsScriptUrlInput" placeholder="Wklej URL wdrożonego skryptu Google..." class="form-input flex-grow">
+                        <button id="saveAppsScriptUrlBtn" class="bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Zapisz</button>
+                    </div>
+                 </div>
+            </div>
+             <div id="configStatus" class="text-sm p-3 rounded-md mt-4"></div>
+        </div>
+
+        <!-- Kroki Procesu -->
+        <div id="uploadStep" class="bg-white rounded-lg shadow-sm hidden">
              <div class="border-b border-gray-200">
                 <nav class="-mb-px flex" aria-label="Tabs">
                     <button class="tab-btn active" data-tab="single">Import Pojedynczy</button>
@@ -60,6 +82,8 @@
     let idToken = null;
     let eventData = [];
     let formHeaders = [];
+    let geminiApiKey = '';
+    let appsScriptUrl = '';
 
     function handleCredentialResponse(response) {
         idToken = response.credential;
@@ -70,7 +94,7 @@
         const userProfile = document.getElementById('userProfile');
         userProfile.innerHTML = `<p class="text-sm text-slate-600">Zalogowano jako: <strong class="text-slate-800">${user.name}</strong></p><button id="logoutBtn" class="text-xs text-red-500 hover:underline">Wyloguj</button>`;
         document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-        loadEventDatabase();
+        setupConfig();
     }
 
     function handleLogout() {
@@ -102,10 +126,6 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        // Pozostały kod JavaScript (funkcje, event listenery) pozostaje bez zmian
-        // ale jest teraz uruchamiany dopiero po udanym zalogowaniu w handleCredentialResponse
-        
-        // Funkcje pomocnicze
         const dropZoneSingle = document.getElementById('dropZoneSingle');
         const dropZoneBulk = document.getElementById('dropZoneBulk');
         const fileInput = document.getElementById('fileInput');
@@ -126,8 +146,60 @@
             single: document.getElementById('singleTab'),
             bulk: document.getElementById('bulkTab')
         };
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+        const appsScriptUrlInput = document.getElementById('appsScriptUrlInput');
+        const saveAppsScriptUrlBtn = document.getElementById('saveAppsScriptUrlBtn');
+        const configStatus = document.getElementById('configStatus');
 
-        // Reszta funkcji (loadEventDatabase, parseCSV, showStep, etc.)
+        function setupConfig() {
+            geminiApiKey = localStorage.getItem('geminiApiKey_importer') || '';
+            appsScriptUrl = localStorage.getItem('appsScriptUrl_importer') || '';
+
+            apiKeyInput.value = geminiApiKey;
+            appsScriptUrlInput.value = appsScriptUrl;
+
+            let statusText = '';
+            let statusClass = '';
+
+            if (geminiApiKey && appsScriptUrl) {
+                statusText = 'Konfiguracja jest kompletna. Możesz rozpocząć importowanie.';
+                statusClass = 'bg-green-100 text-green-800';
+                uploadStep.classList.remove('hidden');
+                loadEventDatabase();
+            } else if (geminiApiKey) {
+                statusText = 'Klucz API jest zapisany. Wklej jeszcze URL skryptu, aby zakończyć konfigurację.';
+                statusClass = 'bg-amber-100 text-amber-800';
+                uploadStep.classList.add('hidden');
+            } else if(appsScriptUrl) {
+                statusText = 'URL Skryptu jest zapisany. Wklej jeszcze klucz API, aby zakończyć konfigurację.';
+                statusClass = 'bg-amber-100 text-amber-800';
+                uploadStep.classList.add('hidden');
+            } else {
+                statusText = 'Wklej klucz API AI oraz URL skryptu Google, aby aktywować aplikację.';
+                statusClass = 'bg-red-100 text-red-800';
+                uploadStep.classList.add('hidden');
+            }
+            configStatus.textContent = statusText;
+            configStatus.className = `text-sm p-3 rounded-md ${statusClass}`;
+        }
+        
+        saveApiKeyBtn.addEventListener('click', () => {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem('geminiApiKey_importer', key);
+                setupConfig();
+            }
+        });
+
+        saveAppsScriptUrlBtn.addEventListener('click', () => {
+            const url = appsScriptUrlInput.value.trim();
+            if (url) {
+                localStorage.setItem('appsScriptUrl_importer', url);
+                setupConfig();
+            }
+        });
+
         async function loadEventDatabase() {
             try {
                 const response = await fetch(`${GOOGLE_SHEET_CSV_URL}&t=${new Date().getTime()}`);
@@ -453,9 +525,9 @@
             try {
                 const action = reviewForm.dataset.existingEventId ? 'update' : 'append';
                 const result = await saveToDatabase(eventPayload, action);
+                const confirmationMessage = document.getElementById('confirmationMessage');
 
                 if (result.status === 'success') {
-                    const confirmationMessage = document.getElementById('confirmationMessage');
                     confirmationMessage.textContent = result.message;
                     showStep(confirmationStep);
                     loadEventDatabase();
