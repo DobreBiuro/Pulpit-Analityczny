@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poster Importer - Moduł Dodawania Wydarzeń</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .drop-zone {
+            border: 3px dashed #cbd5e1;
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        .drop-zone.drag-over {
+            background-color: #f0fdfa; /* teal-50 */
+            border-color: #14b8a6; /* teal-500 */
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #0d9488; /* teal-600 */
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .form-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            border: 1px solid #cbd5e1;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #14b8a6;
+            box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.3);
+        }
+        .form-input.updated {
+            background-color: #fefce8; /* yellow-50 */
+            border-color: #f59e0b; /* amber-500 */
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div class="container mx-auto p-4 md:p-6 lg:p-8 max-w-4xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-slate-900">Poster Importer AI</h1>
+            <p class="text-slate-600 mt-1">Przeciągnij plakat, a AI zajmie się resztą.</p>
+        </header>
+
+        <!-- Krok 1: Upload -->
+        <div id="uploadStep" class="bg-white p-8 rounded-lg shadow-sm">
+            <div id="dropZone" class="drop-zone flex flex-col items-center justify-center p-10 rounded-lg text-center cursor-pointer">
+                <svg class="w-12 h-12 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h2a4 4 0 014 4v1m-4 5h12m0 0l-4-4m4 4l-4 4"></path></svg>
+                <p class="font-semibold text-slate-700">Przeciągnij i upuść plik z posterem tutaj</p>
+                <p class="text-sm text-slate-500 mt-1">lub</p>
+                <button id="browseBtn" type="button" class="mt-3 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition">
+                    Wybierz plik
+                </button>
+            </div>
+            <input type="file" id="fileInput" class="hidden" accept="image/png, image/jpeg">
+        </div>
+
+        <!-- Krok 2: Przetwarzanie -->
+        <div id="processingStep" class="hidden bg-white p-8 rounded-lg shadow-sm text-center">
+            <div class="spinner mx-auto"></div>
+            <p class="mt-4 font-semibold text-slate-700">Analizuję poster przy użyciu AI...</p>
+            <p class="text-sm text-slate-500">To może zająć chwilę.</p>
+        </div>
+        
+        <!-- Krok 3: Weryfikacja -->
+        <div id="reviewStep" class="hidden bg-white p-8 rounded-lg shadow-sm">
+            <h2 id="reviewTitle" class="text-xl font-bold mb-4"></h2>
+            <form id="reviewForm" class="space-y-4">
+                 <!-- Formularz będzie generowany dynamicznie -->
+            </form>
+             <div class="mt-6 flex justify-end gap-3">
+                <button id="cancelBtn" class="bg-slate-200 text-slate-800 py-2 px-4 rounded-md hover:bg-slate-300 transition">Anuluj</button>
+                <button id="saveBtn" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition">Zapisz w Bazie Danych</button>
+            </div>
+        </div>
+
+        <!-- Krok 4: Potwierdzenie -->
+        <div id="confirmationStep" class="hidden bg-white p-8 rounded-lg shadow-sm text-center">
+             <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <h2 class="text-xl font-bold mt-4">Sukces!</h2>
+            <p id="confirmationMessage" class="text-slate-600 mt-2"></p>
+            <div class="mt-6 flex flex-col sm:flex-row justify-center gap-3">
+                 <button id="addAnotherBtn" class="bg-white text-teal-600 border border-teal-600 py-2 px-6 rounded-md hover:bg-teal-50 transition">Dodaj kolejny poster</button>
+                 <a href="./index.html" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition inline-block">Przejdź do pulpitu analitycznego</a>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- ELEMENTY UI ---
+    const dropZone = document.getElementById('dropZone');
+    const browseBtn = document.getElementById('browseBtn');
+    const fileInput = document.getElementById('fileInput');
+    const uploadStep = document.getElementById('uploadStep');
+    const processingStep = document.getElementById('processingStep');
+    const reviewStep = document.getElementById('reviewStep');
+    const confirmationStep = document.getElementById('confirmationStep');
+    const reviewForm = document.getElementById('reviewForm');
+    const reviewTitle = document.getElementById('reviewTitle');
+    const saveBtn = document.getElementById('saveBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const addAnotherBtn = document.getElementById('addAnotherBtn');
+    const confirmationMessage = document.getElementById('confirmationMessage');
+
+
+    // --- BAZA DANYCH (SYMULACJA) ---
+    // W rzeczywistym projekcie te dane pochodziłyby z data.csv
+    let eventData = [
+        { ID_Wydarzenia: 'VERZO_20241123', Data_Wydarzenia: '2024-11-23', Nazwa_Wydarzenia: 'Andrzejki z Power Play', Organizator: 'Verzo', Miasto: 'Roosendaal', Kraj: 'NL', Lokalizacja_Venue: 'Klub Verzo', Pojemność_Venue: 600, Typ_Wydarzenia: 'Impreza klubowa', Podtyp_Wydarzenia: 'Koncert live act', Główny_Artysta_Headliner: 'Power Play', Support_DJs_Artyści: 'DJ Matys', Styl_Muzyczny: 'Disco Polo, Dance', Grupa_Docelowa_Target: 'Fani Disco Polo', Cena_Biletu_Early_Bird: 20.00, Cena_Biletu_Regular: 25.00, Cena_Biletu_w_Dniu_Imprezy: 30.00, Promocje_Specjalne: 'Brak', FB_Liczba_Uczestników: 450, FB_Liczba_Zainteresowanych: 1300, Szacowana_Frekwencja: 'Wysoka (75-90%)', Feedback_Po_Imprezie: 'Super energia, świetny koncert.', Konkurencja_w_Tym_Samym_Czasie: 'Brak', Kluczowe_Wnioski_Agenta: 'Koncerty disco polo to pewniak, przyciągają dedykowaną publiczność gotową zapłacić więcej za bilet.' },
+        { ID_Wydarzenia: 'LUNA_20250614', Data_Wydarzenia: '2025-06-14', Nazwa_Wydarzenia: 'Tween Birthday Party', Organizator: 'Klub Luna', Miasto: 'Loosbroek', Kraj: 'NL', Lokalizacja_Venue: 'Klub Luna', Pojemność_Venue: 800, Typ_Wydarzenia: 'Impreza klubowa', Podtyp_Wydarzenia: 'Urodziny rezydenta', Główny_Artysta_Headliner: 'DJ Tween', Support_DJs_Artyści: 'SPLT, TKKN, Marty, Sonic, Abrixsound', Styl_Muzyczny: 'Club, Dance, Hardstyle', Grupa_Docelowa_Target: 'Stali bywalcy, fani mocniejszych brzmień', Cena_Biletu_Early_Bird: 12.50, Cena_Biletu_Regular: 17.50, Cena_Biletu_w_Dniu_Imprezy: 20.00, Promocje_Specjalne: 'Panie wstęp free do 23:00, 100 darmowych drinków', FB_Liczba_Uczestników: 410, FB_Liczba_Zainteresowanych: 1500, Szacowana_Frekwencja: 'Wyprzedane', Feedback_Po_Imprezie: 'Pełen klub, niesamowita energia. Najlepsza impreza od miesięcy.', Konkurencja_w_Tym_Samym_Czasie: 'Brak', Kluczowe_Wnioski_Agenta: 'Połączenie urodzin rezydenta, silnego line-upu i atrakcyjnych promocji to przepis na wyprzedany event.' }
+    ];
+    
+    // --- FUNKCJE I LOGIKA ---
+    
+    function showStep(step) {
+        [uploadStep, processingStep, reviewStep, confirmationStep].forEach(s => s.classList.add('hidden'));
+        step.classList.remove('hidden');
+    }
+
+    // Obsługa Drag & Drop
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+    });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            handleFile(files[0]);
+        }
+    });
+    browseBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) {
+            handleFile(fileInput.files[0]);
+        }
+    });
+
+    async function handleFile(file) {
+        if (!file.type.startsWith('image/')) {
+            alert('Proszę wybrać plik graficzny.');
+            return;
+        }
+
+        showStep(processingStep);
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const base64Image = reader.result.split(',')[1];
+            try {
+                const extractedData = await extractEventDataFromImage(base64Image);
+                const existingEvent = findExistingEvent(extractedData);
+                
+                populateReviewForm(extractedData, existingEvent);
+                showStep(reviewStep);
+
+            } catch (error) {
+                console.error("Error during AI processing:", error);
+                alert("Wystąpił błąd podczas analizy obrazu. Spróbuj ponownie.");
+                showStep(uploadStep);
+            }
+        };
+    }
+
+    async function extractEventDataFromImage(base64ImageData) {
+        const payload = {
+            contents: [
+                {
+                    parts: [
+                        { text: "Jesteś ekspertem od wprowadzania danych, specjalizującym się w plakatach eventowych. Przeanalizuj ten plakat i wyodrębnij informacje do obiektu JSON. Kluczowe pola to: Nazwa_Wydarzenia, Data_Wydarzenia (w formacie YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto. Jeśli brakuje jakiejś informacji, zwróć pusty ciąg znaków." },
+                        { inlineData: { mime_type: "image/jpeg", data: base64ImageData } }
+                    ]
+                }
+            ],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "OBJECT",
+                    properties: {
+                        "Nazwa_Wydarzenia": { "type": "STRING" },
+                        "Data_Wydarzenia": { "type": "STRING" },
+                        "Główny_Artysta_Headliner": { "type": "STRING" },
+                        "Support_DJs_Artyści": { "type": "STRING" },
+                        "Lokalizacja_Venue": { "type": "STRING" },
+                        "Miasto": { "type": "STRING" }
+                    },
+                }
+            }
+        };
+
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Błąd API: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        if (result.candidates && result.candidates[0].content.parts[0].text) {
+             const parsedJson = JSON.parse(result.candidates[0].content.parts[0].text);
+             // Prosta walidacja i normalizacja daty
+             if(parsedJson.Data_Wydarzenia) {
+                 const dateParts = parsedJson.Data_Wydarzenia.match(/(\d{1,2})[.-](\d{1,2})/);
+                 if (dateParts) {
+                     // Zakładamy bieżący lub następny rok
+                     const day = dateParts[1].padStart(2, '0');
+                     const month = dateParts[2].padStart(2, '0');
+                     const currentYear = new Date().getFullYear();
+                     parsedJson.Data_Wydarzenia = `${currentYear}-${month}-${day}`;
+                 }
+             }
+             return parsedJson;
+        } else {
+            throw new Error("Nie udało się wyodrębnić danych z obrazu.");
+        }
+    }
+    
+    function findExistingEvent(extractedData) {
+        if (!extractedData.Data_Wydarzenia) return null;
+        return eventData.find(event => 
+            event.Data_Wydarzenia === extractedData.Data_Wydarzenia &&
+            (event.Główny_Artysta_Headliner.toLowerCase() === extractedData.Główny_Artysta_Headliner.toLowerCase() ||
+             event.Nazwa_Wydarzenia.toLowerCase() === extractedData.Nazwa_Wydarzenia.toLowerCase())
+        );
+    }
+    
+    function populateReviewForm(extractedData, existingEvent = null) {
+        reviewForm.innerHTML = '';
+        reviewForm.dataset.existingEventId = existingEvent ? existingEvent.ID_Wydarzenia : '';
+        
+        if (existingEvent) {
+            reviewTitle.textContent = "Znaleziono istniejące wydarzenie. Zweryfikuj dane.";
+        } else {
+            reviewTitle.textContent = "Nowe wydarzenie. Sprawdź wyodrębnione dane.";
+        }
+        
+        const fields = ["Nazwa_Wydarzenia", "Data_Wydarzenia", "Główny_Artysta_Headliner", "Support_DJs_Artyści", "Lokalizacja_Venue", "Miasto"];
+        
+        fields.forEach(field => {
+            const extractedValue = extractedData[field] || '';
+            const existingValue = existingEvent ? (existingEvent[field] || '') : '';
+            const isUpdated = existingEvent && extractedValue && (extractedValue.toLowerCase() !== existingValue.toLowerCase());
+
+            const fieldDiv = document.createElement('div');
+            fieldDiv.innerHTML = `
+                <label for="${field}" class="block text-sm font-medium text-slate-700">${field.replace(/_/g, ' ')}</label>
+                <input type="text" id="${field}" name="${field}" value="${extractedValue || existingValue}" class="form-input mt-1 ${isUpdated ? 'updated' : ''}">
+                ${isUpdated ? `<p class="text-xs text-amber-600 mt-1">Zaktualizowano z: "${existingValue}"</p>` : ''}
+            `;
+            reviewForm.appendChild(fieldDiv);
+        });
+    }
+
+    function handleSave() {
+        const formData = new FormData(reviewForm);
+        const updatedData = {};
+        let changes = [];
+        
+        for (let [key, value] of formData.entries()) {
+            updatedData[key] = value;
+        }
+
+        const existingEventId = reviewForm.dataset.existingEventId;
+        if (existingEventId) {
+            const eventIndex = eventData.findIndex(e => e.ID_Wydarzenia === existingEventId);
+            if (eventIndex > -1) {
+                 for(const key in updatedData) {
+                    if (eventData[eventIndex][key] !== updatedData[key] && updatedData[key]) {
+                        changes.push(`pole "${key.replace(/_/g, ' ')}" zaktualizowano na "${updatedData[key]}"`);
+                        eventData[eventIndex][key] = updatedData[key];
+                    }
+                 }
+                 if (changes.length > 0) {
+                     confirmationMessage.textContent = `Pomyślnie zaktualizowano wydarzenie "${eventData[eventIndex].Nazwa_Wydarzenia}". Zmiany: ${changes.join(', ')}.`;
+                 } else {
+                      confirmationMessage.textContent = `Wszystkie dane dla wydarzenia "${eventData[eventIndex].Nazwa_Wydarzenia}" były już aktualne.`;
+                 }
+            }
+        } else {
+            // Logika dodawania nowego eventu
+            const newEventId = `${(updatedData.Organizator || 'EVENT').substring(0,4).toUpperCase()}_${(updatedData.Data_Wydarzenia || 'NODATE').replace(/-/g,'')}`;
+            const newEvent = { ID_Wydarzenia: newEventId, ...updatedData };
+            eventData.push(newEvent);
+            confirmationMessage.textContent = `Pomyślnie dodano nowe wydarzenie "${newEvent.Nazwa_Wydarzenia}" do bazy danych.`;
+        }
+        
+        console.log("Zaktualizowana baza danych:", eventData); // Symulacja zapisu
+        showStep(confirmationStep);
+    }
+    
+    function resetImporter() {
+        fileInput.value = '';
+        reviewForm.innerHTML = '';
+        reviewForm.dataset.existingEventId = '';
+        showStep(uploadStep);
+    }
+    
+    // Event Listeners dla przycisków
+    saveBtn.addEventListener('click', handleSave);
+    cancelBtn.addEventListener('click', resetImporter);
+    addAnotherBtn.addEventListener('click', resetImporter);
+
+});
+</script>
+
+</body>
+</html>
