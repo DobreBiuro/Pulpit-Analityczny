@@ -45,6 +45,14 @@
             border-color: #14b8a6;
             box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.3);
         }
+        .form-input.updated {
+            background-color: #fefce8; /* yellow-50 */
+            border-color: #f59e0b; /* amber-500 */
+        }
+        .ai-badge {
+            font-size: 0.75rem;
+            margin-left: 8px;
+         }
     </style>
 </head>
 <body class="text-slate-800">
@@ -246,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        processingText.textContent = "Analizuję dane...";
+        processingText.textContent = "Analizuję dane i wzbogacam informacje...";
         showStep(processingStep);
 
         const reader = new FileReader();
@@ -268,18 +276,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function getAiAnalysis(base64ImageData, mimeType) {
         const prompt = `Jesteś super-asystentem analityka danych eventowych. Twoim zadaniem jest przeanalizowanie poniższego plakatu i uzupełnienie JAK NAJWIĘKSZEJ liczby pól w formacie JSON.
-
-Kroki analizy:
-1.  **Odczytaj dane z plakatu (OCR):** Odczytaj podstawowe dane takie jak Nazwa_Wydarzenia, Data_Wydarzenia (w formacie YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator. Szukaj nazwy organizatora w stopkach, logotypach i adresach www.
-2.  **Wnioskuj na podstawie danych:**
-    * Na podstawie odczytanej daty, uzupełnij pole Dzień_Tygodnia (po polsku, np. 'Sobota').
-    * Na podstawie odczytanego miasta, uzupełnij pole Region_Obszar (np. dla "Loosbroek" wpisz "Brabancja Północna").
-3.  **Wzbogać dane (symulacja wyszukiwania online):** Na podstawie nazwy artysty i wydarzenia, znajdź i uzupełnij pola: Styl_Muzyczny (np. 'Dance, Club'), Cena_Biletu_Regular (jako liczba).
-4.  **Uzupełnij meta-dane:**
-    * Ustaw pole Agent_Wprowadzający na "AI-OCR".
-    * Oceń kompletność danych i ustaw Status_Rekordu na "Kompletny" lub "Do weryfikacji".
-
-Zwróć JEDEN kompletny obiekt JSON z wszystkimi polami, których oczekuje baza danych, zgodnie z tą listą: ${formHeaders.slice(1).join(', ')}. Jeśli jakiejś informacji absolutnie nie da się znaleźć, pozostaw pole puste.`;
+        Kroki analizy:
+        1.  **Odczytaj dane z plakatu (OCR):** Odczytaj podstawowe dane: Nazwa_Wydarzenia, Data_Wydarzenia (w formacie YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator.
+        2.  **Wnioskuj i wzbogać dane:** Na podstawie odczytanych informacji, uzupełnij pozostałe pola:
+            * **Dzień_Tygodnia**: Oblicz na podstawie daty (po polsku, np. 'Sobota').
+            * **Region_Obszar**: Wywnioskuj na podstawie miasta (np. dla 'Roosendaal' -> 'Brabancja Północna').
+            * **Styl_Muzyczny**: Znajdź typową muzykę dla Głównego Artysty (np. 'Dance, Club').
+            * **Cena_Biletu_Regular**: Poszukaj ceny na plakacie lub zasugeruj typową cenę dla tego typu imprezy.
+        Zwróć JEDEN kompletny obiekt JSON, zawierający wszystkie znalezione i wywnioskowane dane. Jeśli jakiejś informacji nie da się znaleźć, pozostaw pole puste.`;
         
         const payload = {
             contents: [{ parts: [{ text: prompt }, { inlineData: { mime_type: mimeType, data: base64ImageData } }] }],
@@ -357,6 +361,10 @@ Zwróć JEDEN kompletny obiekt JSON z wszystkimi polami, których oczekuje baza 
             eventPayload.ID_Wydarzenia = generateNewEventId(eventPayload);
         }
         
+        eventPayload.Agent_Wprowadzający = "AI-OCR";
+        const requiredFields = ['Nazwa_Wydarzenia', 'Data_Wydarzenia', 'Organizator', 'Miasto', 'Kraj', 'Lokalizacja_Venue', 'Główny_Artysta_Headliner'];
+        const isComplete = requiredFields.every(field => eventPayload[field] && eventPayload[field].trim() !== '');
+        eventPayload.Status_Rekordu = isComplete ? "Kompletny" : "Do weryfikacji";
         eventPayload.Data_Ostatniej_Aktualizacji = new Date().toISOString().slice(0, 10);
 
         try {
