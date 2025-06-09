@@ -275,15 +275,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function getAiAnalysis(base64ImageData, mimeType) {
-        const prompt = `Jesteś super-asystentem analityka danych eventowych. Twoim zadaniem jest przeanalizowanie poniższego plakatu i uzupełnienie JAK NAJWIĘKSZEJ liczby pól w formacie JSON.
-        Kroki analizy:
-        1.  **Odczytaj dane z plakatu (OCR):** Odczytaj podstawowe dane: Nazwa_Wydarzenia, Data_Wydarzenia (w formacie YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator.
-        2.  **Wnioskuj i wzbogać dane:** Na podstawie odczytanych informacji, uzupełnij pozostałe pola:
-            * **Dzień_Tygodnia**: Oblicz na podstawie daty (po polsku, np. 'Sobota').
-            * **Region_Obszar**: Wywnioskuj na podstawie miasta (np. dla 'Roosendaal' -> 'Brabancja Północna').
-            * **Styl_Muzyczny**: Znajdź typową muzykę dla Głównego Artysty (np. 'Dance, Club').
-            * **Cena_Biletu_Regular**: Poszukaj ceny na plakacie lub zasugeruj typową cenę dla tego typu imprezy.
-        Zwróć JEDEN kompletny obiekt JSON, zawierający wszystkie znalezione i wywnioskowane dane. Jeśli jakiejś informacji nie da się znaleźć, pozostaw pole puste.`;
+        const prompt = `Jesteś super-asystentem analityka danych eventowych. Twoim zadaniem jest przeanalizowanie poniższego plakatu i uzupełnienie JAK NAJWIĘKSZEJ liczby pól w formacie JSON, zgodnie z listą: ${formHeaders.join(', ')}.
+
+Kroki analizy:
+1.  **Odczytaj dane z plakatu (OCR):** Odczytaj podstawowe dane takie jak Nazwa_Wydarzenia, Data_Wydarzenia (w formacie YYYY-MM-DD), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator.
+2.  **Wnioskuj i wzbogać dane:** Na podstawie odczytanych informacji, uzupełnij pozostałe pola:
+    * **Styl_Muzyczny**: Znajdź typową muzykę dla Głównego Artysty.
+    * **Cena_Biletu_Regular**: Poszukaj ceny na plakacie lub zasugeruj typową cenę dla tego typu imprezy.
+Zwróć JEDEN kompletny obiekt JSON. Jeśli jakiejś informacji nie da się znaleźć, pozostaw pole puste.`;
         
         const payload = {
             contents: [{ parts: [{ text: prompt }, { inlineData: { mime_type: mimeType, data: base64ImageData } }] }],
@@ -311,7 +310,15 @@ document.addEventListener('DOMContentLoaded', () => {
         reviewForm.dataset.existingEventId = existingEvent ? existingEvent.ID_Wydarzenia : '';
         reviewTitle.textContent = existingEvent ? "Znaleziono istniejące wydarzenie. Zweryfikuj dane." : "Nowe wydarzenie. Sprawdź wyodrębnione dane.";
         
-        formHeaders.slice(1).forEach(field => {
+        if (finalData.Data_Wydarzenia) {
+            const date = new Date(finalData.Data_Wydarzenia);
+            if (!isNaN(date.getTime())) {
+                const dayOfWeek = date.toLocaleDateString('pl-PL', { weekday: 'long' });
+                finalData.Dzień_Tygodnia = dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1);
+            }
+        }
+        
+        formHeaders.slice(1).forEach(field => { // Pomiń ID
             const finalValue = (existingEvent && existingEvent[field]) ? existingEvent[field] : (finalData[field] || '');
             const isAiSuggested = !existingEvent && finalData[field];
 
