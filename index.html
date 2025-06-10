@@ -87,6 +87,7 @@
 <script>
     const CLIENT_ID = '224351474213-rsi2j2r328adm26bi6rsp8476bopsg3s.apps.googleusercontent.com';
     const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSV5QtWbQ38EIj6_IwxYAyNyxi29ODr4aC5HFl38z5PmUXMnmBMXxX0m8YcoHPKEHxzQNb0uAwnW9sV/pub?output=csv';
+    
     let idToken = null;
     let eventData = [];
     let formHeaders = [];
@@ -102,6 +103,7 @@
         const userProfile = document.getElementById('userProfile');
         userProfile.innerHTML = `<div class="text-right"><p class="font-semibold text-slate-800">${user.name}</p><p class="text-xs text-slate-500">${user.email}</p><button id="logoutBtn" class="text-xs text-red-500 hover:underline mt-1">Wyloguj</button></div>`;
         document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+        
         initializeApp();
     }
 
@@ -253,7 +255,7 @@
         }
 
         function showStep(step) {
-            [uploadStep, processingStep, reviewStep, bulkProcessingStep].forEach(s => s.classList.add('hidden'));
+            [uploadStep, processingStep, reviewStep, bulkProcessingStep, confirmationStep].forEach(s => s.classList.add('hidden'));
             step.classList.remove('hidden');
         }
 
@@ -564,9 +566,11 @@
         cancelBtn.addEventListener('click', resetImporter);
         backToImporterBtn.addEventListener('click', resetImporter);
         addAnotherBtn.addEventListener('click', resetImporter);
-
-        document.addEventListener('app:authenticated', setupConfig);
-    });
+    };
+    
+    if (localStorage.getItem('idToken')) {
+        handleCredentialResponse({credential: localStorage.getItem('idToken')});
+    }
 
 </script>
 </body>
