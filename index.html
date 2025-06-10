@@ -10,13 +10,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f4f7f6; }
-        .drop-zone { border: 3px dashed #d1d5db; transition: all 0.2s ease-in-out; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .drop-zone { border: 3px dashed #cbd5e1; transition: all 0.2s ease-in-out; }
         .drop-zone.drag-over { background-color: #f0fdfa; border-color: #14b8a6; transform: scale(1.02); }
-        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 48px; height: 48px; border-radius: 50%; border-left-color: #0d9488; animation: spin 1s ease infinite; }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #0d9488; animation: spin 1s ease infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .form-input { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #d1d5db; background-color: #f9fafb; }
-        .form-input:focus { outline: none; border-color: #14b8a6; box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2); }
+        .form-input { width: 100%; padding: 0.5rem 0.75rem; border-radius: 0.375rem; border: 1px solid #d1d5db; }
+        .form-input:focus { outline: none; border-color: #14b8a6; box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.2); }
         .ai-badge { font-size: 0.75rem; margin-left: 8px; }
         .tab-btn { padding: 0.75rem 1.5rem; font-weight: 600; color: #4b5563; border-bottom: 3px solid transparent; }
         .tab-btn.active { color: #0d9488; border-color: #0d9488; }
@@ -34,7 +34,7 @@
         </div>
     </div>
 
-    <div id="mainApp" class="container mx-auto p-4 md:p-6 lg:p-8 max-w-5xl hidden">
+    <div id="mainApp" class="container mx-auto p-4 md:p-6 lg:p-8 max-w-4xl hidden">
         <header class="mb-8 flex justify-between items-start">
             <div>
                 <h1 class="text-4xl font-bold text-slate-900">Importer Danych</h1>
@@ -48,6 +48,7 @@
             </div>
         </header>
 
+        <!-- Kroki Procesu -->
         <div id="uploadStep" class="bg-white rounded-2xl shadow-lg hidden">
              <div class="border-b border-gray-200"><nav class="-mb-px flex" aria-label="Tabs"><button class="tab-btn active" data-tab="single">Import Pojedynczy</button><button class="tab-btn" data-tab="bulk">Import Masowy (BULK)</button></nav></div>
             <div id="singleTab" class="p-8"><div id="dropZoneSingle" class="drop-zone flex flex-col items-center justify-center p-10 rounded-lg text-center cursor-pointer"><p id="dropZoneText" class="font-semibold text-slate-700">Wczytywanie bazy danych...</p></div><input type="file" id="fileInput" class="hidden" accept="image/png, image/jpeg"></div>
@@ -56,6 +57,7 @@
         <div id="processingStep" class="hidden bg-white p-8 rounded-lg shadow-lg text-center"><div class="spinner mx-auto"></div><p id="processingText" class="mt-4 font-semibold text-slate-700"></p></div>
         <div id="reviewStep" class="hidden bg-white p-8 rounded-lg shadow-lg"><h2 id="reviewTitle" class="text-2xl font-bold mb-6"></h2><form id="reviewForm" class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4"></form><div class="mt-8 flex justify-end gap-3"><button id="cancelBtn" class="bg-slate-200 text-slate-800 py-2 px-4 rounded-md hover:bg-slate-300 transition">Anuluj</button><button id="saveBtn" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition font-semibold">Zapisz w Bazie Danych</button></div></div>
         <div id="bulkProcessingStep" class="hidden bg-white p-8 rounded-lg shadow-lg"><h2 class="text-2xl font-bold mb-4">Przetwarzanie Masowe</h2><div class="mb-4"><div class="flex justify-between mb-1"><span class="text-base font-medium text-teal-700">Postęp</span><span id="progressText" class="text-sm font-medium text-teal-700">0 / 0</span></div><div class="w-full bg-slate-200 rounded-full h-4"><div id="progressBar" class="bg-teal-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div></div></div><div id="bulkFileList" class="space-y-2 max-h-96 overflow-y-auto p-2 border rounded-md"></div><div class="mt-6 flex flex-col sm:flex-row justify-center gap-3"><button id="backToImporterBtn" class="bg-white text-teal-600 border border-teal-600 py-2 px-6 rounded-md hover:bg-teal-50 transition">Dodaj kolejne</button><a href="dashboard.html" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition inline-block">Przejdź do pulpitu</a></div></div>
+        <div id="confirmationStep" class="hidden bg-white p-8 rounded-lg shadow-lg text-center"><div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto"><svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><h2 class="text-xl font-bold mt-4">Sukces!</h2><p id="confirmationMessage" class="text-slate-600 mt-2"></p><div class="mt-6 flex flex-col sm:flex-row justify-center gap-3"><button id="addAnotherBtn" class="bg-white text-teal-600 border border-teal-600 py-2 px-6 rounded-md hover:bg-teal-50 transition">Dodaj kolejny poster</button><a href="dashboard.html" class="bg-teal-600 text-white py-2 px-6 rounded-md hover:bg-teal-700 transition inline-block">Przejdź do pulpitu analitycznego</a></div></div>
     </div>
     
     <!-- Modal Konfiguracji -->
@@ -145,13 +147,8 @@
         const reviewTitle = document.getElementById('reviewTitle');
         const saveBtn = document.getElementById('saveBtn');
         const cancelBtn = document.getElementById('cancelBtn');
+        const addAnotherBtn = document.getElementById('addAnotherBtn');
         const backToImporterBtn = document.getElementById('backToImporterBtn');
-        const dropZoneText = document.getElementById('dropZoneText');
-        const tabs = document.querySelectorAll('.tab-btn');
-        const tabContents = {
-            single: document.getElementById('singleTab'),
-            bulk: document.getElementById('bulkTab')
-        };
         const apiKeyInput = document.getElementById('apiKeyInput');
         const appsScriptUrlInput = document.getElementById('appsScriptUrlInput');
         const saveConfigBtn = document.getElementById('saveConfigBtn');
@@ -159,6 +156,12 @@
         const configModal = document.getElementById('configModal');
         const settingsBtn = document.getElementById('settingsBtn');
         const configStatus = document.getElementById('configStatus');
+        const dropZoneText = document.getElementById('dropZoneText');
+        const tabs = document.querySelectorAll('.tab-btn');
+        const tabContents = {
+            single: document.getElementById('singleTab'),
+            bulk: document.getElementById('bulkTab')
+        };
 
         function setupConfig() {
             geminiApiKey = localStorage.getItem('geminiApiKey_importer') || '';
@@ -202,7 +205,6 @@
         configModal.addEventListener('click', (e) => {
             if (e.target === configModal) closeConfigModal();
         });
-
 
         async function loadEventDatabase() {
             try {
@@ -410,7 +412,7 @@
                  const fileYear = fileYearMatch ? parseInt(fileYearMatch[0], 10) : null;
                  
                  let yearToUse = fileYear;
-                 const monthDay = data.Data_Wydarzenia.substring(5); // "06-14"
+                 const monthDay = data.Data_Wydarzenia.substring(5); 
 
                  if (!yearToUse) {
                     const currentYear = new Date().getFullYear();
@@ -548,7 +550,7 @@
         
         function resetImporter() {
             fileInput.value = '';
-            fileInputBulk.value = '';
+            if (fileInputBulk) fileInputBulk.value = '';
             reviewForm.innerHTML = '';
             reviewForm.dataset.existingEventId = '';
             showStep(uploadStep);
