@@ -566,11 +566,11 @@
         cancelBtn.addEventListener('click', resetImporter);
         backToImporterBtn.addEventListener('click', resetImporter);
         addAnotherBtn.addEventListener('click', resetImporter);
-    };
-    
-    if (localStorage.getItem('idToken')) {
-        handleCredentialResponse({credential: localStorage.getItem('idToken')});
+        
+        setupConfig();
     }
+    
+    document.addEventListener('DOMContentLoaded', initializeApp);
 
 </script>
 </body>
