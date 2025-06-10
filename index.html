@@ -92,7 +92,6 @@
     let formHeaders = [];
     let geminiApiKey = '';
     let appsScriptUrl = '';
-    let appInitialized = false;
 
     function handleCredentialResponse(response) {
         idToken = response.credential;
@@ -103,10 +102,7 @@
         const userProfile = document.getElementById('userProfile');
         userProfile.innerHTML = `<div class="text-right"><p class="font-semibold text-slate-800">${user.name}</p><p class="text-xs text-slate-500">${user.email}</p><button id="logoutBtn" class="text-xs text-red-500 hover:underline mt-1">Wyloguj</button></div>`;
         document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-        
-        if (!appInitialized) {
-            initializeApp();
-        }
+        initializeApp();
     }
 
     function handleLogout() {
@@ -138,7 +134,6 @@
     }
     
     function initializeApp() {
-        appInitialized = true;
         const dropZoneSingle = document.getElementById('dropZoneSingle');
         const dropZoneBulk = document.getElementById('dropZoneBulk');
         const fileInput = document.getElementById('fileInput');
