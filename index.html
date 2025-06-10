@@ -67,12 +67,12 @@
                 <h2 class="text-xl font-bold mb-4">Konfiguracja Połączenia</h2>
                  <div class="space-y-4">
                      <div>
-                        <label for="apiKeyInput" class="block text-sm font-medium text-slate-700">Klucz API AI</label>
-                        <input type="password" id="apiKeyInput" placeholder="Wklej swój klucz API AI..." class="form-input mt-1">
+                        <label for="apiKeyInputModal" class="block text-sm font-medium text-slate-700">Klucz API AI</label>
+                        <input type="password" id="apiKeyInputModal" placeholder="Wklej swój klucz API AI..." class="form-input mt-1">
                      </div>
                      <div>
-                        <label for="appsScriptUrlInput" class="block text-sm font-medium text-slate-700">URL Skryptu Google Apps</label>
-                         <input type="password" id="appsScriptUrlInput" placeholder="Wklej URL wdrożonego skryptu Google..." class="form-input mt-1">
+                        <label for="appsScriptUrlInputModal" class="block text-sm font-medium text-slate-700">URL Skryptu Google Apps</label>
+                         <input type="password" id="appsScriptUrlInputModal" placeholder="Wklej URL wdrożonego skryptu Google..." class="form-input mt-1">
                      </div>
                 </div>
                  <p class="text-xs text-slate-500 mt-4">Twoje klucze są zapisywane tylko w Twojej przeglądarce. <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-teal-600 underline">Zdobądź klucz API.</a></p>
@@ -147,10 +147,10 @@
         const reviewTitle = document.getElementById('reviewTitle');
         const saveBtn = document.getElementById('saveBtn');
         const cancelBtn = document.getElementById('cancelBtn');
-        const addAnotherBtn = document.getElementById('addAnotherBtn');
         const backToImporterBtn = document.getElementById('backToImporterBtn');
-        const apiKeyInput = document.getElementById('apiKeyInput');
-        const appsScriptUrlInput = document.getElementById('appsScriptUrlInput');
+        const addAnotherBtn = document.getElementById('addAnotherBtn');
+        const apiKeyInput = document.getElementById('apiKeyInputModal');
+        const appsScriptUrlInput = document.getElementById('appsScriptUrlInputModal');
         const saveConfigBtn = document.getElementById('saveConfigBtn');
         const closeConfigModalBtn = document.getElementById('closeConfigModalBtn');
         const configModal = document.getElementById('configModal');
@@ -162,6 +162,7 @@
             single: document.getElementById('singleTab'),
             bulk: document.getElementById('bulkTab')
         };
+        const confirmationMessage = document.getElementById('confirmationMessage');
 
         function setupConfig() {
             geminiApiKey = localStorage.getItem('geminiApiKey_importer') || '';
@@ -179,10 +180,13 @@
             } else {
                 configStatus.innerHTML = `<span class="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Wymaga konfiguracji</span>`;
                 uploadStep.classList.add('hidden');
+                openConfigModal();
             }
         }
         
         function openConfigModal() {
+            apiKeyInput.value = localStorage.getItem('geminiApiKey_importer') || '';
+            appsScriptUrlInput.value = localStorage.getItem('appsScriptUrl_importer') || '';
             configModal.classList.remove('hidden');
             configModal.classList.add('flex');
             setTimeout(() => configModal.querySelector('.modal-content').classList.remove('scale-95'), 10);
@@ -478,7 +482,7 @@
             });
         }
 
-        function generateNewEventId(data) {
+        function generateNewEventId() {
             const year = new Date().getFullYear();
             const prefix = `${year}-`;
             const eventsThisYear = eventData.filter(e => e.ID_Wydarzenia && e.ID_Wydarzenia.startsWith(prefix));
@@ -494,7 +498,7 @@
 
         async function saveToDatabase(eventPayload, action) {
              if (action === 'append') {
-                eventPayload.ID_Wydarzenia = generateNewEventId(eventPayload);
+                eventPayload.ID_Wydarzenia = generateNewEventId();
             } else {
                 const existing = findExistingEvent(eventPayload);
                 eventPayload.ID_Wydarzenia = existing.ID_Wydarzenia;
