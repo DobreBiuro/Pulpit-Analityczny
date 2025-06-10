@@ -92,6 +92,7 @@
     let formHeaders = [];
     let geminiApiKey = '';
     let appsScriptUrl = '';
+    let appInitialized = false;
 
     function handleCredentialResponse(response) {
         idToken = response.credential;
@@ -102,7 +103,10 @@
         const userProfile = document.getElementById('userProfile');
         userProfile.innerHTML = `<div class="text-right"><p class="font-semibold text-slate-800">${user.name}</p><p class="text-xs text-slate-500">${user.email}</p><button id="logoutBtn" class="text-xs text-red-500 hover:underline mt-1">Wyloguj</button></div>`;
         document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-        document.dispatchEvent(new Event('app:authenticated'));
+        
+        if (!appInitialized) {
+            initializeApp();
+        }
     }
 
     function handleLogout() {
@@ -133,412 +137,442 @@
         }
     }
     
-    // --- APP LOGIC ---
-
-    const dropZoneSingle = document.getElementById('dropZoneSingle');
-    const dropZoneBulk = document.getElementById('dropZoneBulk');
-    const fileInput = document.getElementById('fileInput');
-    const fileInputBulk = document.getElementById('fileInputBulk');
-    const uploadStep = document.getElementById('uploadStep');
-    const processingStep = document.getElementById('processingStep');
-    const processingText = document.getElementById('processingText');
-    const reviewStep = document.getElementById('reviewStep');
-    const bulkProcessingStep = document.getElementById('bulkProcessingStep');
-    const reviewForm = document.getElementById('reviewForm');
-    const reviewTitle = document.getElementById('reviewTitle');
-    const saveBtn = document.getElementById('saveBtn');
-    const cancelBtn = document.getElementById('cancelBtn');
-    const backToImporterBtn = document.getElementById('backToImporterBtn');
-    const addAnotherBtn = document.getElementById('addAnotherBtn');
-    const apiKeyInput = document.getElementById('apiKeyInputModal');
-    const appsScriptUrlInput = document.getElementById('appsScriptUrlInputModal');
-    const saveConfigBtn = document.getElementById('saveConfigBtn');
-    const closeConfigModalBtn = document.getElementById('closeConfigModalBtn');
-    const configModal = document.getElementById('configModal');
-    const settingsBtn = document.getElementById('settingsBtn');
-    const configStatus = document.getElementById('configStatus');
-    const dropZoneText = document.getElementById('dropZoneText');
-    const tabs = document.querySelectorAll('.tab-btn');
-    const tabContents = {
-        single: document.getElementById('singleTab'),
-        bulk: document.getElementById('bulkTab')
-    };
-    const confirmationMessage = document.getElementById('confirmationMessage');
-
-    function setupConfig() {
-        geminiApiKey = localStorage.getItem('geminiApiKey_importer') || '';
-        appsScriptUrl = localStorage.getItem('appsScriptUrl_importer') || '';
-
-        apiKeyInput.value = geminiApiKey;
-        appsScriptUrlInput.value = appsScriptUrl;
-        
-        const configComplete = geminiApiKey && appsScriptUrl;
-        
-        if (configComplete) {
-            configStatus.innerHTML = `<span class="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-medium bg-green-100 text-green-800">Skonfigurowano</span>`;
-            uploadStep.classList.remove('hidden');
-            loadEventDatabase();
-        } else {
-            configStatus.innerHTML = `<span class="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Wymaga konfiguracji</span>`;
-            uploadStep.classList.add('hidden');
-            openConfigModal();
-        }
-    }
-    
-    function openConfigModal() {
-        apiKeyInput.value = localStorage.getItem('geminiApiKey_importer') || '';
-        appsScriptUrlInput.value = localStorage.getItem('appsScriptUrl_importer') || '';
-        configModal.classList.remove('hidden');
-        configModal.classList.add('flex');
-        setTimeout(() => configModal.querySelector('.modal-content').classList.remove('scale-95'), 10);
-    }
-
-    function closeConfigModal() {
-        configModal.querySelector('.modal-content').classList.add('scale-95');
-        setTimeout(() => configModal.classList.add('hidden'), 300);
-    }
-
-    async function loadEventDatabase() {
-        try {
-            const response = await fetch(`${GOOGLE_SHEET_CSV_URL}&t=${new Date().getTime()}`);
-            if (!response.ok) throw new Error('Błąd sieci.');
-            const csvText = await response.text();
-            
-            const lines = csvText.trim().split(/\r?\n/);
-            formHeaders = lines[0].split(',').map(h => h.trim());
-            
-            eventData = parseCSV(csvText, formHeaders);
-            
-            if (dropZoneSingle) {
-                dropZoneSingle.innerHTML = `
-                    <svg class="w-12 h-12 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h2a4 4 0 014 4v1m-4 5h12m0 0l-4-4m4 4l-4 4"></path></svg>
-                    <p class="font-semibold text-slate-700">Przeciągnij i upuść plik z posterem tutaj</p>
-                    <p class="text-sm text-slate-500 mt-1">lub</p>
-                    <button id="browseBtnSingle" type="button" class="mt-3 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Wybierz plik</button>
-                `;
-                document.getElementById('browseBtnSingle').addEventListener('click', () => fileInput.click());
-            }
-
-        } catch (error) {
-            console.error(error);
-            if(dropZoneText) {
-                dropZoneText.textContent = 'Błąd ładowania bazy danych. Sprawdź link i spróbuj ponownie.';
-                dropZoneText.classList.add('text-red-600');
-            }
-        }
-    }
-
-    function parseCSV(csvText, headers) {
-        const lines = csvText.trim().split(/\r?\n/);
-        return lines.slice(1).map(line => {
-            const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            const obj = {};
-            headers.forEach((header, index) => {
-                obj[header] = values[index] ? values[index].trim().replace(/^"|"$/g, '') : '';
-            });
-            return obj;
-        });
-    }
-
-    function showStep(step) {
-        [uploadStep, processingStep, reviewStep, bulkProcessingStep].forEach(s => s.classList.add('hidden'));
-        step.classList.remove('hidden');
-    }
-
-    const setupDropZone = (dz, input) => {
-        if (!dz) return;
-        dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('drag-over'); });
-        dz.addEventListener('dragleave', (e) => { e.preventDefault(); dz.classList.remove('drag-over'); });
-        dz.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dz.classList.remove('drag-over');
-            if (e.dataTransfer.files.length) {
-                if(input.multiple) handleMultipleFiles(e.dataTransfer.files);
-                else handleFile(e.dataTransfer.files[0]);
-            }
-        });
-    };
-    
-    async function handleFile(file) {
-         if (!idToken) {
-            alert('Sesja wygasła. Proszę się zalogować ponownie.');
-            return;
-        }
-        if (!file.type.startsWith('image/')) {
-            alert('Proszę wybrać plik graficzny.');
-            return;
-        }
-        
-        processingText.textContent = "Analizuję dane i wzbogacam informacje...";
-        showStep(processingStep);
-
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async () => {
-            const base64Image = reader.result.split(',')[1];
-            try {
-                const finalData = await getAiAnalysis(base64Image, file.type, file.name);
-                const existingEvent = findExistingEvent(finalData);
-                populateReviewForm(finalData, existingEvent);
-                showStep(reviewStep);
-            } catch (error) {
-                console.error("Error during AI processing:", error);
-                alert("Wystąpił błąd podczas analizy obrazu. Spróbuj ponownie.");
-                showStep(uploadStep);
-            }
+    function initializeApp() {
+        appInitialized = true;
+        const dropZoneSingle = document.getElementById('dropZoneSingle');
+        const dropZoneBulk = document.getElementById('dropZoneBulk');
+        const fileInput = document.getElementById('fileInput');
+        const fileInputBulk = document.getElementById('fileInputBulk');
+        const uploadStep = document.getElementById('uploadStep');
+        const processingStep = document.getElementById('processingStep');
+        const processingText = document.getElementById('processingText');
+        const reviewStep = document.getElementById('reviewStep');
+        const bulkProcessingStep = document.getElementById('bulkProcessingStep');
+        const reviewForm = document.getElementById('reviewForm');
+        const reviewTitle = document.getElementById('reviewTitle');
+        const saveBtn = document.getElementById('saveBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const backToImporterBtn = document.getElementById('backToImporterBtn');
+        const addAnotherBtn = document.getElementById('addAnotherBtn');
+        const apiKeyInput = document.getElementById('apiKeyInputModal');
+        const appsScriptUrlInput = document.getElementById('appsScriptUrlInputModal');
+        const saveConfigBtn = document.getElementById('saveConfigBtn');
+        const closeConfigModalBtn = document.getElementById('closeConfigModalBtn');
+        const configModal = document.getElementById('configModal');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const configStatus = document.getElementById('configStatus');
+        const dropZoneText = document.getElementById('dropZoneText');
+        const tabs = document.querySelectorAll('.tab-btn');
+        const tabContents = {
+            single: document.getElementById('singleTab'),
+            bulk: document.getElementById('bulkTab')
         };
-    }
+        const confirmationMessage = document.getElementById('confirmationMessage');
 
-    async function handleMultipleFiles(files) {
-         if (!idToken) {
-            alert('Sesja wygasła. Proszę się zalogować ponownie.');
-            return;
-        }
-        if (files.length > 10) {
-            alert("Można przetworzyć maksymalnie 10 plików na raz.");
-            return;
-        }
-        const fileQueue = Array.from(files);
-        showStep(bulkProcessingStep);
-        const fileListContainer = document.getElementById('bulkFileList');
-        const progressBar = document.getElementById('progressBar');
-        const progressText = document.getElementById('progressText');
-        
-        fileListContainer.innerHTML = '';
-        let processedCount = 0;
-        let newCount = 0;
-        let updatedCount = 0;
-        
-        progressText.textContent = `${processedCount} / ${fileQueue.length}`;
-        progressBar.style.width = '0%';
+        function setupConfig() {
+            geminiApiKey = localStorage.getItem('geminiApiKey_importer') || '';
+            appsScriptUrl = localStorage.getItem('appsScriptUrl_importer') || '';
 
-        for (const file of fileQueue) {
-            const fileDiv = document.createElement('div');
-            fileDiv.className = 'flex items-center gap-3 p-2 rounded-md bg-slate-50';
-            fileDiv.innerHTML = `<div id="spinner-${processedCount}" class="spinner !w-5 !h-5"></div><span class="text-sm text-slate-700">${file.name}</span><span id="status-${processedCount}" class="text-sm ml-auto text-slate-500">Przetwarzam...</span>`;
-            fileListContainer.appendChild(fileDiv);
-
-            try {
-                const reader = new FileReader();
-                const base64Image = await new Promise((resolve, reject) => {
-                    reader.onload = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
-
-                const finalData = await getAiAnalysis(base64Image, file.type, file.name);
-                const action = findExistingEvent(finalData) ? 'update' : 'append';
-                const result = await saveToDatabase(finalData, action);
-                
-                if (result.status === 'success') {
-                    document.getElementById(`spinner-${processedCount}`).outerHTML = '<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-                    if (action === 'append') newCount++;
-                    if (action === 'update') updatedCount++;
-                    document.getElementById(`status-${processedCount}`).textContent = 'Gotowe';
-                    document.getElementById(`status-${processedCount}`).className = 'text-sm ml-auto text-green-600';
-
-                    await loadEventDatabase();
-                } else {
-                    throw new Error(result.message);
-                }
-            } catch (err) {
-                console.error(`Błąd przy przetwarzaniu ${file.name}:`, err);
-                document.getElementById(`spinner-${processedCount}`).outerHTML = '<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-                document.getElementById(`status-${processedCount}`).textContent = 'Błąd';
-                document.getElementById(`status-${processedCount}`).className = 'text-sm ml-auto text-red-600';
-            }
+            apiKeyInput.value = geminiApiKey;
+            appsScriptUrlInput.value = appsScriptUrl;
             
-            processedCount++;
-            progressText.textContent = `${processedCount} / ${fileQueue.length}`;
-            progressBar.style.width = `${(processedCount / fileQueue.length) * 100}%`;
-        }
-        
-        const summary = document.createElement('div');
-        summary.className = 'mt-4 p-4 bg-teal-50 border border-teal-200 rounded-md text-center';
-        summary.innerHTML = `<h3 class="font-semibold">Przetwarzanie zakończone</h3><p>Dodano ${newCount} nowych wydarzeń i zaktualizowano ${updatedCount}.</p>`;
-        fileListContainer.prepend(summary);
-    }
-
-    async function getAiAnalysis(base64ImageData, mimeType, fileName) {
-        const prompt = `Jesteś super-asystentem analityka danych eventowych. Twoim zadaniem jest przeanalizowanie poniższego plakatu i uzupełnienie JAK NAJWIĘKSZEJ liczby pól w formacie JSON. Nazwa pliku to "${fileName}".
-        Kroki analizy:
-        1.  **Odczytaj dane z plakatu (OCR):** Odczytaj podstawowe dane takie jak Nazwa_Wydarzenia, Data_Wydarzenia (format<y_bin_564>-MM-DD, jeśli nie ma roku, użyj 0000), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator.
-        2.  **Wzbogać dane (WNIOSKOWANIE I WIEDZA ZEWNĘTRZNA):** Na podstawie odczytanych informacji, uzupełnij puste pola w tak wielu kolumnach bazy danych jak możesz:
-            * **Styl_Muzyczny**: Jaki styl muzyczny gra Główny_Artysta_Headliner?
-            * **Pojemność_Venue**: Poszukaj w internecie (symulacja) jaka jest typowa pojemność dla 'Lokalizacja_Venue' w 'Miasto'. Poszukaj po adresie albo nazwie firmy. Podaj jako liczbę.
-            * **Cena_Biletu_Regular**: Poszukaj ceny na plakacie lub zasugeruj typową cenę dla tego typu wydarzenia.
-        ZWRÓĆ JEDEN kompletny obiekt JSON. Jeśli informacji brakuje, pole ma być puste.`;
-        
-        const payload = {
-            contents: [{ parts: [{ text: prompt }, { inlineData: { mime_type: mimeType, data: base64ImageData } }] }],
-            generationConfig: { responseMimeType: "application/json" }
-        };
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
-        const result = await response.json();
-        const text = result.candidates[0].content.parts[0].text;
-        const data = JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
-
-        if (data.Data_Wydarzenia && data.Data_Wydarzenia.includes('0000')) {
-             const fileYearMatch = fileName.match(/\b(20\d{2})\b/);
-             const fileYear = fileYearMatch ? parseInt(fileYearMatch[0], 10) : null;
-             
-             let yearToUse = fileYear;
-             const monthDay = data.Data_Wydarzenia.substring(5); 
-
-             if (!yearToUse) {
-                const currentYear = new Date().getFullYear();
-                const dateThisYear = new Date(`${currentYear}-${monthDay}`);
-                const dateNextYear = new Date(`${currentYear + 1}-${monthDay}`);
-                
-                const isSaturdayThisYear = dateThisYear.getDay() === 6;
-                const isSaturdayNextYear = dateNextYear.getDay() === 6;
-
-                if (isSaturdayThisYear) { yearToUse = currentYear; } 
-                else if (isSaturdayNextYear) { yearToUse = currentYear + 1; } 
-                else {
-                    const today = new Date();
-                    today.setHours(0,0,0,0);
-                    yearToUse = (dateThisYear >= today) ? currentYear : currentYear + 1;
-                }
-             }
-             data.Data_Wydarzenia = `${yearToUse}-${monthDay}`;
-        }
-        
-        if (data.Data_Wydarzenia) {
-            const date = new Date(data.Data_Wydarzenia);
-            if (!isNaN(date.getTime())) {
-                const dayOfWeek = date.toLocaleDateString('pl-PL', { weekday: 'long' });
-                data.Dzień_Tygodnia = dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1);
-            }
-        }
-        return data;
-    }
-
-    function findExistingEvent(extractedData) {
-        if (!extractedData.Data_Wydarzenia) return null;
-        const extractedDate = extractedData.Data_Wydarzenia;
-        
-        return eventData.find(event => {
-            let score = 0;
-            if (event.Data_Wydarzenia === extractedDate) score += 5;
-            if (event.Główny_Artysta_Headliner && extractedData.Główny_Artysta_Headliner && event.Główny_Artysta_Headliner.toLowerCase() === extractedData.Główny_Artysta_Headliner.toLowerCase()) score += 4;
-            if (event.Nazwa_Wydarzenia && extractedData.Nazwa_Wydarzenia && event.Nazwa_Wydarzenia.toLowerCase().includes(extractedData.Nazwa_Wydarzenia.toLowerCase())) score += 2;
-            if (event.Miasto && extractedData.Miasto && event.Miasto.toLowerCase() === extractedData.Miasto.toLowerCase()) score += 2;
+            const configComplete = geminiApiKey && appsScriptUrl;
             
-            return score >= 7; 
-        });
-    }
-    
-    function populateReviewForm(finalData, existingEvent) {
-        reviewForm.innerHTML = '';
-        reviewForm.dataset.existingEventId = existingEvent ? existingEvent.ID_Wydarzenia : '';
-        reviewTitle.textContent = existingEvent ? "Znaleziono istniejące wydarzenie. Zweryfikuj dane." : "Nowe wydarzenie. Sprawdź wyodrębnione dane.";
-        
-        formHeaders.slice(1).forEach(field => {
-            const finalValue = (existingEvent && existingEvent[field]) ? existingEvent[field] : (finalData[field] || '');
-            const isAiSuggested = !existingEvent && finalData[field];
-
-            const fieldDiv = document.createElement('div');
-            let badge = isAiSuggested ? '<span class="ai-badge">✨ AI</span>' : '';
-            
-            fieldDiv.innerHTML = `
-                <label for="${field}" class="flex items-center text-sm font-medium text-slate-700">${field.replace(/_/g, ' ')} ${badge}</label>
-                <input type="text" id="${field}" name="${field}" value="${finalValue}" class="form-input mt-1" placeholder="Brak danych...">
-            `;
-            reviewForm.appendChild(fieldDiv);
-        });
-    }
-
-    function generateNewEventId() {
-        const prefix = new Date().getFullYear() + '-';
-        const eventsThisYear = eventData.filter(e => e.ID_Wydarzenia && e.ID_Wydarzenia.startsWith(prefix));
-        const maxId = eventsThisYear.reduce((max, e) => {
-            if(!e.ID_Wydarzenia.includes('-')) return max;
-            const idNum = parseInt(e.ID_Wydarzenia.split('-')[1], 10);
-            return idNum > max ? idNum : max;
-        }, 0);
-        
-        const newIdNum = (maxId + 1).toString().padStart(3, '0');
-        return `${prefix}${newIdNum}`;
-    }
-
-    async function saveToDatabase(eventPayload, action) {
-         if (action === 'append') {
-            eventPayload.ID_Wydarzenia = generateNewEventId();
-        } else {
-            const existing = findExistingEvent(eventPayload);
-            eventPayload.ID_Wydarzenia = existing.ID_Wydarzenia;
-        }
-        
-        eventPayload.Agent_Wprowadzający = "AI-OCR";
-        const requiredFields = ['Nazwa_Wydarzenia', 'Data_Wydarzenia', 'Organizator', 'Miasto', 'Kraj', 'Lokalizacja_Venue', 'Główny_Artysta_Headliner'];
-        const isComplete = requiredFields.every(field => eventPayload[field] && eventPayload[field].trim() !== '');
-        eventPayload.Status_Rekordu = isComplete ? "Kompletny" : "Do weryfikacji";
-        eventPayload.Data_Ostatniej_Aktualizacji = new Date().toISOString().slice(0, 10);
-
-        const response = await fetch(appsScriptUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({
-                token: idToken,
-                action: action,
-                data: eventPayload
-            })
-        });
-        return await response.json();
-    }
-
-    async function handleSave() {
-        processingText.textContent = "Zapisywanie danych w Arkuszu Google...";
-        showStep(processingStep);
-
-        const formData = new FormData(reviewForm);
-        const eventPayload = {};
-        for (let [key, value] of formData.entries()) {
-            eventPayload[key] = value;
-        }
-
-        try {
-            const action = reviewForm.dataset.existingEventId ? 'update' : 'append';
-            const result = await saveToDatabase(eventPayload, action);
-            const confirmationMessage = document.getElementById('confirmationMessage');
-
-            if (result.status === 'success') {
-                confirmationMessage.textContent = result.message;
-                showStep(confirmationStep);
+            if (configComplete) {
+                configStatus.innerHTML = `<span class="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-medium bg-green-100 text-green-800">Skonfigurowano</span>`;
+                uploadStep.classList.remove('hidden');
                 loadEventDatabase();
             } else {
-                throw new Error(result.message || 'Nieznany błąd zapisu w Google Apps Script.');
+                configStatus.innerHTML = `<span class="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Wymaga konfiguracji</span>`;
+                uploadStep.classList.add('hidden');
+                openConfigModal();
+            }
+        }
+        
+        function openConfigModal() {
+            apiKeyInput.value = localStorage.getItem('geminiApiKey_importer') || '';
+            appsScriptUrlInput.value = localStorage.getItem('appsScriptUrl_importer') || '';
+            configModal.classList.remove('hidden');
+            configModal.classList.add('flex');
+            setTimeout(() => configModal.querySelector('.modal-content').classList.remove('scale-95'), 10);
+        }
+
+        function closeConfigModal() {
+            configModal.querySelector('.modal-content').classList.add('scale-95');
+            setTimeout(() => configModal.classList.add('hidden'), 300);
+        }
+
+        saveConfigBtn.addEventListener('click', () => {
+            localStorage.setItem('geminiApiKey_importer', apiKeyInput.value.trim());
+            localStorage.setItem('appsScriptUrl_importer', appsScriptUrlInput.value.trim());
+            setupConfig();
+            closeConfigModal();
+        });
+
+        settingsBtn.addEventListener('click', openConfigModal);
+        closeConfigModalBtn.addEventListener('click', closeConfigModal);
+        configModal.addEventListener('click', (e) => {
+            if (e.target === configModal) closeConfigModal();
+        });
+
+        async function loadEventDatabase() {
+            try {
+                const response = await fetch(`${GOOGLE_SHEET_CSV_URL}&t=${new Date().getTime()}`);
+                if (!response.ok) throw new Error('Błąd sieci.');
+                const csvText = await response.text();
+                
+                const lines = csvText.trim().split(/\r?\n/);
+                formHeaders = lines[0].split(',').map(h => h.trim());
+                
+                eventData = parseCSV(csvText, formHeaders);
+                
+                if (dropZoneSingle) {
+                    dropZoneSingle.innerHTML = `
+                        <svg class="w-12 h-12 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h2a4 4 0 014 4v1m-4 5h12m0 0l-4-4m4 4l-4 4"></path></svg>
+                        <p class="font-semibold text-slate-700">Przeciągnij i upuść plik z posterem tutaj</p>
+                        <p class="text-sm text-slate-500 mt-1">lub</p>
+                        <button id="browseBtnSingle" type="button" class="mt-3 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700">Wybierz plik</button>
+                    `;
+                    document.getElementById('browseBtnSingle').addEventListener('click', () => fileInput.click());
+                }
+
+            } catch (error) {
+                console.error(error);
+                if(dropZoneText) {
+                    dropZoneText.textContent = 'Błąd ładowania bazy danych. Sprawdź link i spróbuj ponownie.';
+                    dropZoneText.classList.add('text-red-600');
+                }
+            }
+        }
+
+        function parseCSV(csvText, headers) {
+            const lines = csvText.trim().split(/\r?\n/);
+            return lines.slice(1).map(line => {
+                const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = values[index] ? values[index].trim().replace(/^"|"$/g, '') : '';
+                });
+                return obj;
+            });
+        }
+
+        function showStep(step) {
+            [uploadStep, processingStep, reviewStep, bulkProcessingStep].forEach(s => s.classList.add('hidden'));
+            step.classList.remove('hidden');
+        }
+
+        const setupDropZone = (dz, input) => {
+            if (!dz) return;
+            dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('drag-over'); });
+            dz.addEventListener('dragleave', (e) => { e.preventDefault(); dz.classList.remove('drag-over'); });
+            dz.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dz.classList.remove('drag-over');
+                if (e.dataTransfer.files.length) {
+                    if(input.multiple) handleMultipleFiles(e.dataTransfer.files);
+                    else handleFile(e.dataTransfer.files[0]);
+                }
+            });
+        };
+        setupDropZone(dropZoneSingle, fileInput);
+        setupDropZone(dropZoneBulk, fileInputBulk);
+        
+        fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+        fileInputBulk.addEventListener('change', () => { if (fileInputBulk.files.length) handleMultipleFiles(fileInputBulk.files); });
+        
+        const browseBtnBulk = document.getElementById('browseBtnBulk');
+        if(browseBtnBulk) {
+            browseBtnBulk.addEventListener('click', () => fileInputBulk.click());
+        }
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                Object.values(tabContents).forEach(content => content.classList.add('hidden'));
+                tabContents[tab.dataset.tab].classList.remove('hidden');
+            });
+        });
+
+        async function handleFile(file) {
+             if (!idToken) {
+                alert('Sesja wygasła. Proszę się zalogować ponownie.');
+                return;
+            }
+            if (!file.type.startsWith('image/')) {
+                alert('Proszę wybrać plik graficzny.');
+                return;
+            }
+            
+            processingText.textContent = "Analizuję dane i wzbogacam informacje...";
+            showStep(processingStep);
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                const base64Image = reader.result.split(',')[1];
+                try {
+                    const finalData = await getAiAnalysis(base64Image, file.type, file.name);
+                    const existingEvent = findExistingEvent(finalData);
+                    populateReviewForm(finalData, existingEvent);
+                    showStep(reviewStep);
+                } catch (error) {
+                    console.error("Error during AI processing:", error);
+                    alert("Wystąpił błąd podczas analizy obrazu. Spróbuj ponownie.");
+                    showStep(uploadStep);
+                }
+            };
+        }
+
+        async function handleMultipleFiles(files) {
+             if (!idToken) {
+                alert('Sesja wygasła. Proszę się zalogować ponownie.');
+                return;
+            }
+            if (files.length > 10) {
+                alert("Można przetworzyć maksymalnie 10 plików na raz.");
+                return;
+            }
+            const fileQueue = Array.from(files);
+            showStep(bulkProcessingStep);
+            const fileListContainer = document.getElementById('bulkFileList');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            fileListContainer.innerHTML = '';
+            let processedCount = 0;
+            let newCount = 0;
+            let updatedCount = 0;
+            
+            progressText.textContent = `${processedCount} / ${fileQueue.length}`;
+            progressBar.style.width = '0%';
+
+            for (const file of fileQueue) {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'flex items-center gap-3 p-2 rounded-md bg-slate-50';
+                fileDiv.innerHTML = `<div id="spinner-${processedCount}" class="spinner !w-5 !h-5"></div><span class="text-sm text-slate-700">${file.name}</span><span id="status-${processedCount}" class="text-sm ml-auto text-slate-500">Przetwarzam...</span>`;
+                fileListContainer.appendChild(fileDiv);
+
+                try {
+                    const reader = new FileReader();
+                    const base64Image = await new Promise((resolve, reject) => {
+                        reader.onload = () => resolve(reader.result.split(',')[1]);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+
+                    const finalData = await getAiAnalysis(base64Image, file.type, file.name);
+                    const action = findExistingEvent(finalData) ? 'update' : 'append';
+                    const result = await saveToDatabase(finalData, action);
+                    
+                    if (result.status === 'success') {
+                        document.getElementById(`spinner-${processedCount}`).outerHTML = '<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                        if (action === 'append') newCount++;
+                        if (action === 'update') updatedCount++;
+                        document.getElementById(`status-${processedCount}`).textContent = 'Gotowe';
+                        document.getElementById(`status-${processedCount}`).className = 'text-sm ml-auto text-green-600';
+
+                        await loadEventDatabase();
+                    } else {
+                        throw new Error(result.message);
+                    }
+                } catch (err) {
+                    console.error(`Błąd przy przetwarzaniu ${file.name}:`, err);
+                    document.getElementById(`spinner-${processedCount}`).outerHTML = '<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                    document.getElementById(`status-${processedCount}`).textContent = 'Błąd';
+                    document.getElementById(`status-${processedCount}`).className = 'text-sm ml-auto text-red-600';
+                }
+                
+                processedCount++;
+                progressText.textContent = `${processedCount} / ${fileQueue.length}`;
+                progressBar.style.width = `${(processedCount / fileQueue.length) * 100}%`;
+            }
+            
+            const summary = document.createElement('div');
+            summary.className = 'mt-4 p-4 bg-teal-50 border border-teal-200 rounded-md text-center';
+            summary.innerHTML = `<h3 class="font-semibold">Przetwarzanie zakończone</h3><p>Dodano ${newCount} nowych wydarzeń i zaktualizowano ${updatedCount}.</p>`;
+            fileListContainer.prepend(summary);
+        }
+
+        async function getAiAnalysis(base64ImageData, mimeType, fileName) {
+            const prompt = `Jesteś super-asystentem analityka danych eventowych. Twoim zadaniem jest przeanalizowanie poniższego plakatu i uzupełnienie JAK NAJWIĘKSZEJ liczby pól w formacie JSON. Nazwa pliku to "${fileName}".
+            Kroki analizy:
+            1.  **Odczytaj dane z plakatu (OCR):** Odczytaj podstawowe dane takie jak Nazwa_Wydarzenia, Data_Wydarzenia (format<y_bin_564>-MM-DD, jeśli nie ma roku, użyj 0000), Główny_Artysta_Headliner, Support_DJs_Artyści, Lokalizacja_Venue, Miasto, Kraj, Organizator.
+            2.  **Wzbogać dane (WNIOSKOWANIE I WIEDZA ZEWNĘTRZNA):** Na podstawie odczytanych informacji, uzupełnij puste pola w tak wielu kolumnach bazy danych jak możesz:
+                * **Styl_Muzyczny**: Jaki styl muzyczny gra Główny_Artysta_Headliner?
+                * **Pojemność_Venue**: Poszukaj w internecie (symulacja) jaka jest typowa pojemność dla 'Lokalizacja_Venue' w 'Miasto'. Poszukaj po adresie albo nazwie firmy. Podaj jako liczbę.
+                * **Cena_Biletu_Regular**: Poszukaj ceny na plakacie lub zasugeruj typową cenę dla tego typu wydarzenia.
+            ZWRÓĆ JEDEN kompletny obiekt JSON. Jeśli informacji brakuje, pole ma być puste.`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }, { inlineData: { mime_type: mimeType, data: base64ImageData } }] }],
+                generationConfig: { responseMimeType: "application/json" }
+            };
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+            const result = await response.json();
+            const text = result.candidates[0].content.parts[0].text;
+            const data = JSON.parse(text.replace(/```json\n?/, '').replace(/```$/, ''));
+
+            if (data.Data_Wydarzenia && data.Data_Wydarzenia.includes('0000')) {
+                 const fileYearMatch = fileName.match(/\b(20\d{2})\b/);
+                 const fileYear = fileYearMatch ? parseInt(fileYearMatch[0], 10) : null;
+                 
+                 let yearToUse = fileYear;
+                 const monthDay = data.Data_Wydarzenia.substring(5); 
+
+                 if (!yearToUse) {
+                    const currentYear = new Date().getFullYear();
+                    const dateThisYear = new Date(`${currentYear}-${monthDay}`);
+                    const dateNextYear = new Date(`${currentYear + 1}-${monthDay}`);
+                    
+                    const isSaturdayThisYear = dateThisYear.getDay() === 6;
+                    const isSaturdayNextYear = dateNextYear.getDay() === 6;
+
+                    if (isSaturdayThisYear) { yearToUse = currentYear; } 
+                    else if (isSaturdayNextYear) { yearToUse = currentYear + 1; } 
+                    else {
+                        const today = new Date();
+                        today.setHours(0,0,0,0);
+                        yearToUse = (dateThisYear >= today) ? currentYear : currentYear + 1;
+                    }
+                 }
+                 data.Data_Wydarzenia = `${yearToUse}-${monthDay}`;
+            }
+            
+            if (data.Data_Wydarzenia) {
+                const date = new Date(data.Data_Wydarzenia);
+                if (!isNaN(date.getTime())) {
+                    const dayOfWeek = date.toLocaleDateString('pl-PL', { weekday: 'long' });
+                    data.Dzień_Tygodnia = dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1);
+                }
+            }
+            return data;
+        }
+    
+        function findExistingEvent(extractedData) {
+            if (!extractedData.Data_Wydarzenia) return null;
+            const extractedDate = extractedData.Data_Wydarzenia;
+            
+            return eventData.find(event => {
+                let score = 0;
+                if (event.Data_Wydarzenia === extractedDate) score += 5;
+                if (event.Główny_Artysta_Headliner && extractedData.Główny_Artysta_Headliner && event.Główny_Artysta_Headliner.toLowerCase() === extractedData.Główny_Artysta_Headliner.toLowerCase()) score += 4;
+                if (event.Nazwa_Wydarzenia && extractedData.Nazwa_Wydarzenia && event.Nazwa_Wydarzenia.toLowerCase().includes(extractedData.Nazwa_Wydarzenia.toLowerCase())) score += 2;
+                if (event.Miasto && extractedData.Miasto && event.Miasto.toLowerCase() === extractedData.Miasto.toLowerCase()) score += 2;
+                
+                return score >= 7; 
+            });
+        }
+        
+        function populateReviewForm(finalData, existingEvent) {
+            reviewForm.innerHTML = '';
+            reviewForm.dataset.existingEventId = existingEvent ? existingEvent.ID_Wydarzenia : '';
+            reviewTitle.textContent = existingEvent ? "Znaleziono istniejące wydarzenie. Zweryfikuj dane." : "Nowe wydarzenie. Sprawdź wyodrębnione dane.";
+            
+            formHeaders.slice(1).forEach(field => {
+                const finalValue = (existingEvent && existingEvent[field]) ? existingEvent[field] : (finalData[field] || '');
+                const isAiSuggested = !existingEvent && finalData[field];
+
+                const fieldDiv = document.createElement('div');
+                let badge = isAiSuggested ? '<span class="ai-badge">✨ AI</span>' : '';
+                
+                fieldDiv.innerHTML = `
+                    <label for="${field}" class="flex items-center text-sm font-medium text-slate-700">${field.replace(/_/g, ' ')} ${badge}</label>
+                    <input type="text" id="${field}" name="${field}" value="${finalValue}" class="form-input mt-1" placeholder="Brak danych...">
+                `;
+                reviewForm.appendChild(fieldDiv);
+            });
+        }
+
+        function generateNewEventId() {
+            const year = new Date().getFullYear();
+            const prefix = `${year}-`;
+            const eventsThisYear = eventData.filter(e => e.ID_Wydarzenia && e.ID_Wydarzenia.startsWith(prefix));
+            const maxId = eventsThisYear.reduce((max, e) => {
+                if(!e.ID_Wydarzenia.includes('-')) return max;
+                const idNum = parseInt(e.ID_Wydarzenia.split('-')[1], 10);
+                return idNum > max ? idNum : max;
+            }, 0);
+            
+            const newIdNum = (maxId + 1).toString().padStart(3, '0');
+            return `${prefix}${newIdNum}`;
+        }
+
+        async function saveToDatabase(eventPayload, action) {
+             if (action === 'append') {
+                eventPayload.ID_Wydarzenia = generateNewEventId();
+            } else {
+                const existing = findExistingEvent(eventPayload);
+                eventPayload.ID_Wydarzenia = existing.ID_Wydarzenia;
+            }
+            
+            eventPayload.Agent_Wprowadzający = "AI-OCR";
+            const requiredFields = ['Nazwa_Wydarzenia', 'Data_Wydarzenia', 'Organizator', 'Miasto', 'Kraj', 'Lokalizacja_Venue', 'Główny_Artysta_Headliner'];
+            const isComplete = requiredFields.every(field => eventPayload[field] && eventPayload[field].trim() !== '');
+            eventPayload.Status_Rekordu = isComplete ? "Kompletny" : "Do weryfikacji";
+            eventPayload.Data_Ostatniej_Aktualizacji = new Date().toISOString().slice(0, 10);
+
+            const response = await fetch(appsScriptUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({
+                    token: idToken,
+                    action: action,
+                    data: eventPayload
+                })
+            });
+            return await response.json();
+        }
+
+        async function handleSave() {
+            processingText.textContent = "Zapisywanie danych w Arkuszu Google...";
+            showStep(processingStep);
+
+            const formData = new FormData(reviewForm);
+            const eventPayload = {};
+            for (let [key, value] of formData.entries()) {
+                eventPayload[key] = value;
             }
 
-        } catch (error) {
-            console.error("Błąd zapisu danych:", error);
-            alert(`Wystąpił błąd podczas zapisu danych: ${error.message}`);
-            showStep(reviewStep);
+            try {
+                const action = reviewForm.dataset.existingEventId ? 'update' : 'append';
+                const result = await saveToDatabase(eventPayload, action);
+                const confirmationMessage = document.getElementById('confirmationMessage');
+
+                if (result.status === 'success') {
+                    confirmationMessage.textContent = result.message;
+                    showStep(confirmationStep);
+                    loadEventDatabase();
+                } else {
+                    throw new Error(result.message || 'Nieznany błąd zapisu w Google Apps Script.');
+                }
+
+            } catch (error) {
+                console.error("Błąd zapisu danych:", error);
+                alert(`Wystąpił błąd podczas zapisu danych: ${error.message}`);
+                showStep(reviewStep);
+            }
         }
-    }
-    
-    function resetImporter() {
-        fileInput.value = '';
-        if (fileInputBulk) fileInputBulk.value = '';
-        reviewForm.innerHTML = '';
-        reviewForm.dataset.existingEventId = '';
-        showStep(uploadStep);
-    }
-    
-    saveBtn.addEventListener('click', handleSave);
-    cancelBtn.addEventListener('click', resetImporter);
-    backToImporterBtn.addEventListener('click', resetImporter);
-    addAnotherBtn.addEventListener('click', resetImporter);
+        
+        function resetImporter() {
+            fileInput.value = '';
+            if (fileInputBulk) fileInputBulk.value = '';
+            reviewForm.innerHTML = '';
+            reviewForm.dataset.existingEventId = '';
+            showStep(uploadStep);
+        }
+        
+        saveBtn.addEventListener('click', handleSave);
+        cancelBtn.addEventListener('click', resetImporter);
+        backToImporterBtn.addEventListener('click', resetImporter);
+        addAnotherBtn.addEventListener('click', resetImporter);
 
-    // Initial setup on authentication
-    document.addEventListener('app:authenticated', () => {
-        setupConfig();
+        document.addEventListener('app:authenticated', setupConfig);
     });
-});
-</script>
 
+</script>
 </body>
 </html>
